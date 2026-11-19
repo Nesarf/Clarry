@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "clarry://character",
+  "title": "Character",
+  "description": "A participant in Clarry. Text first; visual assets are optional and added later.",
+  "type": "object",
+  "required": ["id", "name", "sheet"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "player": { "type": "boolean", "default": false, "description": "true when this character is the user's own" },
+    "sheet": {
+      "type": "object",
+      "description": "The textual card. Personality, history, voice, what this character wants.",
+      "properties": {
+        "role": { "type": "string" },
+        "summary": { "type": "string" },
+        "traits": { "type": "array", "items": { "type": "string" } },
+        "voice": { "type": "string", "description": "How this character speaks: rhythm, register, verbal tics." },
+        "goals": { "type": "array", "items": { "type": "string" } },
+        "fears": { "type": "array", "items": { "type": "string" } },
+        "secrets": { "type": "array", "items": { "type": "string" } },
+        "relations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "kind": { "type": "string" },
+              "warmth": { "type": "number", "minimum": -1, "maximum": 1 },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "visual": {
+      "type": "object",
+      "description": "Optional. Filled in by the art pipeline (ichiwatashi / lineweight / Live2D / Blender).",
+      "properties": {
+        "kind": { "enum": ["none", "pixel", "live2d", "model3d"] },
+        "ref": { "type": "string", "description": "Path or asset id, relative to the repo." },
+        "expressions": { "type": "array", "items": { "type": "string" } },
+        "palette": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "agent": {
+      "type": "object",
+      "description": "How this character is driven. Any HTTP-speaking agent can take the seat.",
+      "properties": {
+        "kind": { "enum": ["human", "llm", "scripted"], "default": "llm" },
+        "endpoint": { "type": "string", "description": "OpenAI-compatible base URL, or a Clarry actor endpoint." },
+        "model": { "type": "string" },
+        "autonomy": { "enum": ["scripted", "guided", "free"], "default": "guided" },
+        "seed": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

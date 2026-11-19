@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clarry · 舞台</title>
+<style>
+  :root {
+    --night: #1A1E3A;
+    --violet: #2B1B4A;
+    --ink: #0D0F1F;
+    --gold: #D4AF37;
+    --gold-dim: #A8894A;
+    --mana: #4FD1C5;
+    --crimson: #C1272D;
+    --ivory: #F5EBDC;
+    --parchment: #E8DCC0;
+    --line: rgba(212, 175, 55, .16);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    background:
+      radial-gradient(1100px 560px at 18% -12%, rgba(79, 209, 197, .10), transparent 62%),
+      radial-gradient(900px 520px at 92% -6%, rgba(212, 175, 55, .09), transparent 58%),
+      linear-gradient(158deg, var(--ink) 0%, var(--night) 42%, var(--violet) 100%);
+    color: var(--ivory);
+    font-family: "Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---- 顶栏 ---- */
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(13, 15, 31, .55);
+    backdrop-filter: blur(6px);
+    flex: 0 0 auto;
+  }
+
+  .mark {
+    font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+    font-size: 20px;
+    letter-spacing: .18em;
+    color: var(--gold);
+    text-shadow: 0 0 18px rgba(212, 175, 55, .35);
+  }
+
+  .meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--parchment); }
+  .meta b { color: var(--ivory); font-weight: 500; }
+
+  .lamp { display: inline-flex; align-items: center; gap: 6px; }
+  .lamp::before {
+    content: "";
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(232, 220, 192, .3);
+  }
+  .lamp.on::before { background: var(--mana); box-shadow: 0 0 10px var(--mana); }
+  .lamp.held::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+  .spacer { flex: 1; }
+
+  .ctl { display: flex; gap: 8px; }
+  button {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: .08em;
+    color: var(--parchment);
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  button:hover:not(:disabled) { color: var(--ink); background: var(--gold); border-color: var(--gold); }
+  button:disabled { opacity: .35; cursor: default; }
+  button.primary { border-color: var(--gold); color: var(--gold); }
+
+  /* ---- 主区 ---- */
+  .main { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 268px; min-height: 0; }
+
+  .flow {
+    overflow-y: auto;
+    padding: 18px 24px 40px;
+    scroll-behavior: smooth;
+  }
+  .flow::-webkit-scrollbar { width: 8px; }
+  .flow::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, .22); border-radius: 4px; }
+
+  .empty { color: var(--gold-dim); font-size: 13px; padding: 40px 0; text-align: center; letter-spacing: .1em; }
+
+  .turn { display: grid; grid-template-columns: 92px 1fr; gap: 16px; padding: 11px 0; border-bottom: 1px solid rgba(212, 175, 55, .07); }
+  .turn .who { color: var(--gold); font-size: 12px; letter-spacing: .1em; padding-top: 3px; }
+  .turn .body { min-width: 0; }
+  .turn .tag { display: inline-block; font-size: 10px; letter-spacing: .14em; padding: 1px 7px; border-radius: 3px; margin-right: 8px; vertical-align: 2px; }
+  .turn .said { font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif; font-size: 14.5px; line-height: 1.9; color: var(--ivory); }
+  .turn .to { color: var(--mana); font-size: 11px; margin-left: 6px; }
+
+  .k-speak   .tag { background: rgba(245, 235, 220, .10); color: var(--parchment); }
+  .k-act     .tag { background: rgba(43, 27, 74, .85);   color: #B9A6E0; }
+  .k-probe   .tag { background: rgba(79, 209, 197, .14); color: var(--mana); }
+  .k-give    .tag { background: rgba(212, 175, 55, .16); color: var(--gold); }
+  .k-reveal  .tag { background: rgba(193, 39, 45, .18);  color: #E8797D; }
+  .k-withhold .tag { background: rgba(120, 120, 130, .18); color: #9A9AA6; }
+  .k-game    .tag { background: rgba(212, 175, 55, .10); color: var(--gold-dim); }
+
+  .k-act .said, .k-probe .said { color: var(--parchment); font-style: italic; }
+
+  /* ---- 席位 ---- */
+  .cast { border-left: 1px solid var(--line); overflow-y: auto; padding: 16px 14px; background: rgba(13, 15, 31, .35); }
+  .cast::-webkit-scrollbar { width: 6px; }
+  .cast::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, .18); border-radius: 3px; }
+
+  .seat { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: rgba(13, 15, 31, .5); }
+  .seat .face {
+    display: block; width: 100%; height: 118px; margin-bottom: 8px;
+    object-fit: contain; object-position: center bottom;
+    image-rendering: pixelated; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .5));
+  }
+  .seat .name { font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif; font-size: 15px; color: var(--ivory); letter-spacing: .08em; }
+  .seat .ember {
+    display: inline-block; margin-left: 8px; padding: 0 5px; vertical-align: 1px;
+    font-size: 10px; letter-spacing: .14em; color: #E8A33D;
+    border: 1px solid rgba(232, 163, 61, .45); border-radius: 3px;
+    text-shadow: 0 0 10px rgba(232, 163, 61, .8);
+  }
+  .seat .role { font-size: 11px; color: var(--gold-dim); letter-spacing: .1em; margin-top: 2px; }
+  .seat .flag { font-size: 10px; letter-spacing: .1em; color: var(--mana); margin-top: 6px; }
+  .seat .flag.idle { color: #7F7F8C; }
+  .seat .flag.player { color: var(--gold); }
+  .seat .summary { font-size: 11px; line-height: 1.7; color: rgba(232, 220, 192, .62); margin: 8px 0 10px; }
+
+  .stats { display: grid; gap: 5px; }
+  .stat { display: grid; grid-template-columns: 34px 1fr 22px; align-items: center; gap: 7px; font-size: 10px; color: var(--gold-dim); }
+  .stat .bar { height: 3px; background: rgba(232, 220, 192, .12); border-radius: 2px; overflow: hidden; }
+  .stat .bar i { display: block; height: 100%; border-radius: 2px; background: var(--gold); }
+  .stat .val { text-align: right; color: rgba(232, 220, 192, .55); font-variant-numeric: tabular-nums; }
+  .stat.s-insight .bar i { background: var(--mana); }
+  .stat.s-strain  .bar i { background: var(--crimson); }
+  .stat.s-reserve .bar i { background: var(--gold-dim); }
+
+  /* ---- 用户席位 ---- */
+  .wait {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--gold);
+    background: linear-gradient(180deg, rgba(43, 27, 74, .92), rgba(13, 15, 31, .96));
+    padding: 12px 20px 14px;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, .45);
+  }
+  .wait.hidden { display: none; }
+  .wait .why { font-size: 12px; color: var(--gold); letter-spacing: .06em; margin-bottom: 9px; }
+  .wait .row { display: flex; gap: 8px; align-items: center; }
+  .wait select, .wait input {
+    font: inherit; font-size: 13px;
+    color: var(--ivory);
+    background: rgba(13, 15, 31, .8);
+    border: 1px solid var(--gold-dim);
+    border-radius: 6px;
+    padding: 7px 10px;
+    outline: none;
+  }
+  .wait input.text { flex: 1; }
+  .wait select:focus, .wait input:focus { border-color: var(--mana); }
+
+  .gap { height: 1px; background: var(--line); margin: 10px 0; }
+  .top .meta em { font-style: normal; color: var(--gold-dim); font-size: 11px; margin-left: 4px; }
+  .seat .mood { font-size: 11px; color: var(--gold); letter-spacing: .08em; margin-top: 2px; }
+  .seat .shot {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 10px; letter-spacing: .12em;
+    padding: 2px 7px; border-radius: 999px;
+    border: 1px solid var(--gold-dim); color: var(--gold);
+  }
+  .seat .shot.memory { border-color: var(--mana); color: var(--mana); }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="mark">Clarry</div>
+  <div class="meta">
+    <span>第 <b id="round">0</b> 轮</span>
+    <span>线索 <b id="clues">0/3</b></span>
+    <span>台上 <b id="seated">0</b>/64</span>
+    <span>受驱使 <b id="driven">0</b></span>
+    <span>镜头 <b id="watching">—</b><em id="watching-why"></em></span>
+    <span id="state" class="lamp">未启动</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="ctl">
+    <button id="btn-follow">跟最新的</button>
+    <button id="btn-start" class="primary">开场</button>
+    <button id="btn-stop">收场</button>
+    <button id="btn-new">新戏</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="flow" id="flow">
+    <div class="empty">台上一片安静。按下「开场」，让角色自己开口。</div>
+  </div>
+  <div class="cast" id="cast"></div>
+</div>
+
+<div class="wait hidden" id="wait">
+  <div class="why" id="wait-why"></div>
+  <div class="row">
+    <select id="w-kind">
+      <option value="speak">说话</option>
+      <option value="act">行动</option>
+      <option value="probe">试探</option>
+      <option value="give">给予</option>
+      <option value="reveal">揭露</option>
+      <option value="withhold">沉默</option>
+    </select>
+    <select id="w-target"><option value="">（不指向谁）</option></select>
+    <input id="w-text" class="text" placeholder="你要说什么，或做什么">
+    <button id="w-send" class="primary">下令</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = '';                    // 同源：页面由 Clarry.Server 托管
+  var cast = [];                   // /api/cast 的最新一份
+  var lastCount = -1;              // 用于判断是否要滚到底
+  var lastScene = null;            // 上一帧在看哪一幕：换幕就要重新滚到底
+  var watching = null;             // 这一帧在看哪一幕
+  var playerId = null;
+
+  function el(id) { return document.getElementById(id); }
+
+  function get(path) {
+    return fetch(API + path, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error(path + ' -> ' + r.status);
+      return r.json();
+    });
+  }
+
+  function post(path, body) {
+    var init = { method: 'POST' };
+    if (body !== undefined && body !== null) {
+      init.headers = { 'Content-Type': 'application/json' };
+      init.body = JSON.stringify(body);
+    }
+    return fetch(API + path, init).then(function (r) { return r.json(); });
+  }
+
+  // ---- 顶栏 -------------------------------------------------------------
+  function renderTop(world, status, audience) {
+    el('round').textContent = world.rounds;
+    el('clues').textContent = world.clues.cluesResolved + '/' + world.clues.clueGoal;
+    el('seated').textContent = world.stage.length;
+    el('driven').textContent = status.drivenSeats;
+
+    // 镜头跟谁、为什么。理由要写在脸上，藏进按钮的 title 等于没写。
+    el('watching').textContent = audience.watching || '—';
+    el('watching-why').textContent = audience.because || '';
+    el('btn-follow').disabled = !audience.pinned;
+
+    var lamp = el('state');
+    if (status.awaitingUser) {
+      lamp.className = 'lamp held';
+      lamp.textContent = '等你';
+    } else if (status.running) {
+      lamp.className = 'lamp on';
+      lamp.textContent = '循环中';
+    } else {
+      lamp.className = 'lamp';
+      lamp.textContent = status.stopReason ? '已收场' : '未启动';
+    }
+
+    el('btn-start').disabled = status.running || status.drivenSeats === 0;
+    el('btn-stop').disabled = !status.running;
+  }
+
+  // ---- 席位卡 -----------------------------------------------------------
+  function bar(value) {
+    var i = document.createElement('i');
+    i.style.width = Math.max(0, Math.min(100, value)) + '%';
+    return i;
+  }
+
+  function stat(label, cls, value) {
+    var row = document.createElement('div');
+    row.className = 'stat ' + cls;
+    var l = document.createElement('span'); l.textContent = label;
+    var b = document.createElement('div'); b.className = 'bar'; b.appendChild(bar(value));
+    var v = document.createElement('span'); v.className = 'val'; v.textContent = value;
+    row.appendChild(l); row.appendChild(b); row.appendChild(v);
+    return row;
+  }
+
+  function renderCast(list) {
+    cast = list || [];
+    playerId = null;
+    var box = el('cast');
+    box.textContent = '';
+
+    cast.forEach(function (c) {
+      if (c.isPlayer) playerId = c.id;
+
+      var seat = document.createElement('div');
+      seat.className = 'seat';
+
+      var face = document.createElement('img');
+      face.className = 'face';
+      face.alt = '';
+      face.loading = 'lazy';
+
+      // 服务端给的是一串候选，从最具体到一定存在的那一张。第一张能加载的就是这一格该用的图；
+      // 全试完都不行就藏起来，而不是留一个破图标。
+      var tries = (c.faces && c.faces.length) ? c.faces.slice() : [c.portrait];
+      face.addEventListener('error', function () {
+        tries.shift();
+        if (tries.length) { face.src = tries[0]; }
+        else { face.style.visibility = 'hidden'; }
+      });
+      face.src = tries[0];
+      seat.appendChild(face);
+
+      if (c.shot && c.shot !== 'wide') {
+        var shot = document.createElement('span');
+        shot.className = 'shot ' + c.shot;
+        shot.textContent = c.shotText;
+        seat.appendChild(shot);
+      }
+
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = c.name;
+      if (c.a.ember) {
+        var ember = document.createElement('span');
+        ember.className = 'ember';
+        ember.textContent = '余火';
+        name.appendChild(ember);
+      }
+      seat.appendChild(name);
+
+      var role = document.createElement('div');
+      role.className = 'role';
+      role.textContent = (c.role || '未定') + ' · ' + c.id;
+      seat.appendChild(role);
+
+      // 图还没画出来的时候，表情至少要说出来，否则这一层等于没做。
+      if (c.expression && c.expression !== 'neutral') {
+        var mood = document.createElement('div');
+        mood.className = 'mood';
+        mood.textContent = c.expressionText;
+        seat.appendChild(mood);
+      }
+
+      var flag = document.createElement('div');
+      flag.className = 'flag' + (c.isPlayer ? ' player' : (c.driven ? '' : ' idle'));
+      flag.textContent = c.isPlayer ? '你的席位' : (c.driven ? '正在受驱使' : '无驱动，不会主动出手');
+      seat.appendChild(flag);
+
+      if (c.summary) {
+        var sum = document.createElement('div');
+        sum.className = 'summary';
+        sum.textContent = c.summary;
+        seat.appendChild(sum);
+      }
+
+      var stats = document.createElement('div');
+      stats.className = 'stats';
+      stats.appendChild(stat('沉稳', 's-poise', c.a.poise));
+      stats.appendChild(stat('洞察', 's-insight', c.a.insight));
+      stats.appendChild(stat('声望', 's-renown', c.a.renown));
+      stats.appendChild(stat('压力', 's-strain', c.a.strain));
+      stats.appendChild(stat('余力', 's-reserve', c.a.reserve));
+      seat.appendChild(stats);
+
+      box.appendChild(seat);
+    });
+
+    // 目标下拉：除自己以外的人
+    var sel = el('w-target');
+    var keep = sel.value;
+    sel.textContent = '';
+    var none = document.createElement('option');
+    none.value = ''; none.textContent = '（不指向谁）';
+    sel.appendChild(none);
+    cast.forEach(function (c) {
+      if (c.id === playerId) return;
+      var o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name;
+      sel.appendChild(o);
+    });
+    sel.value = keep;
+  }
+
+  // ---- 台词流 -----------------------------------------------------------
+  var ORDER_KINDS = { speak: 1, act: 1, probe: 1, give: 1, reveal: 1, withhold: 1, activity: 1 };
+  var KIND_LABEL = {
+    speak: '说话', act: '行动', probe: '试探',
+    give: '给予', reveal: '揭露', withhold: '沉默',
+    game: '小游戏', activity: '活动'
+  };
+
+  function nameOf(id) {
+    for (var i = 0; i < cast.length; i++) if (cast[i].id === id) return cast[i].name;
+    return id;
+  }
+
+  function renderFlow(history) {
+    var turns = (history || []).filter(function (t) {
+      return ORDER_KINDS[t.kind] || t.kind === 'game';
+    });
+
+    if (turns.length === lastCount) return;
+
+    var box = el('flow');
+    box.textContent = '';
+
+    if (turns.length === 0) {
+      var e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = '台上一片安静。按下「开场」，让角色自己开口。';
+      box.appendChild(e);
+      lastCount = 0;
+      return;
+    }
+
+    turns.forEach(function (t) {
+      var row = document.createElement('div');
+      row.className = 'turn k-' + t.kind;
+
+      var who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = nameOf(t.actorId);
+      row.appendChild(who);
+
+      var body = document.createElement('div');
+      body.className = 'body';
+
+      var tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = KIND_LABEL[t.kind] || t.kind;
+      body.appendChild(tag);
+
+      if (t.addressedTo) {
+        var to = document.createElement('span');
+        to.className = 'to';
+        to.textContent = '→ ' + nameOf(t.addressedTo);
+        body.appendChild(to);
+      }
+
+      var said = document.createElement('div');
+      said.className = 'said';
+      said.textContent = t.text || '';
+      body.appendChild(said);
+
+      row.appendChild(body);
+      box.appendChild(row);
+    });
+
+    lastCount = turns.length;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ---- 用户席位的闸门 ---------------------------------------------------
+  function renderWait(status) {
+    var bar = el('wait');
+    if (!status.awaitingUser || !playerId) {
+      bar.classList.add('hidden');
+      return;
+    }
+    bar.classList.remove('hidden');
+    el('wait-why').textContent =
+      (status.awaitingBecause || '有人在等你接话') + '　·　轮到你了，' + nameOf(playerId);
+  }
+
+  function send() {
+    if (!playerId) return;
+    var kind = el('w-kind').value;
+    var target = el('w-target').value || null;
+    var text = el('w-text').value.trim();
+    if (!text) { el('w-text').focus(); return; }
+
+    el('w-send').disabled = true;
+    post('/api/round/order', { actorId: playerId, kind: kind, targetId: target, text: text })
+      .then(function (r) {
+        el('w-send').disabled = false;
+        if (r && r.accepted) { el('w-text').value = ''; refresh(); }
+      })
+      .catch(function () { el('w-send').disabled = false; });
+  }
+
+  // ---- 主循环 -----------------------------------------------------------
+  function refresh() {
+    return Promise.all([
+      get('/api/world'),
+      get('/api/loop/status'),
+      get('/api/audience')
+    ]).then(function (r) {
+      var world = r[0], status = r[1], audience = r[2];
+
+      // 换了一幕就把滚动位置重来，否则新的一幕会停在旧一幕读到的地方。
+      if (audience.watching !== lastScene) { lastScene = audience.watching; lastCount = -1; }
+      watching = audience.watching;
+
+      renderTop(world, status, audience);
+
+      var tail = '/api/history?take=300' + (watching ? '&scene=' + encodeURIComponent(watching) : '');
+      return Promise.all([get(tail), get('/api/cast')]).then(function (more) {
+        renderCast(more[1]);
+        renderFlow(more[0]);
+        renderWait(status);
+      });
+    }).catch(function () {
+      var lamp = el('state');
+      lamp.className = 'lamp';
+      lamp.textContent = '连不上 3090';
+    });
+  }
+
+  el('btn-follow').addEventListener('click', function () {
+    post('/api/audience/auto', null).then(refresh);
+  });
+  el('btn-start').addEventListener('click', function () {
+    post('/api/loop/start', { intervalMs: 300, maxRounds: 20, userWaitMs: 60000 }).then(refresh);
+  });
+  el('btn-stop').addEventListener('click', function () {
+    post('/api/loop/stop?reason=' + encodeURIComponent('收场')).then(refresh);
+  });
+  el('btn-new').addEventListener('click', function () {
+    post('/api/scene/new?clueGoal=3').then(function () { lastCount = -1; return refresh(); });
+  });
+  el('w-send').addEventListener('click', send);
+  el('w-text').addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
+
+  refresh();
+  setInterval(refresh, 1500);
+})();
+</script>
+</body>
+</html>

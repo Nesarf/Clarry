@@ -1,0 +1,612 @@
+{
+  "project": "Clarry",
+  "summary": "A Hippocras variant: a house where agents live among themselves and the user watches, arranging the odd encounter with three wishes per scene. Rounds survive only where simultaneity is itself the drama -- duels, wagers, card games; everything else runs on events. Characters carry their own memories, their own names for each other, and personalities that move with what happens to them. Sixty-four is how many residents may share a scene, not how many may exist.",
+  "goals": [
+    {
+      "id": "docs-style",
+      "title": "视觉与语气风格定稿（日系幻想 RPG 的质感令牌）",
+      "status": "done",
+      "after": [],
+      "files": [
+        "docs/STYLE.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "docs-language",
+      "title": "语言约定：观众可见的字全中文，代码内部全英文，禁止中英并置",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "docs/STYLE.md",
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "stage/index.html"
+      ],
+      "tests": [
+        "scripts/test-loop.ps1",
+        "scripts/test-user-gate.ps1"
+      ]
+    },
+    {
+      "id": "docs-stack",
+      "title": "技术栈边界：C# 核心、Rust 归热点、Java/Lua/Ruby 补缺口，js/ts/py 只留工具与前端",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "docs/STACK.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "repo-budget",
+      "title": "体积预算：版本控制 500 MB、工作区 30~60 GB、单版本 release 5 GB，附实测脚本与忽略规则",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "docs/REPO.md",
+        ".gitignore",
+        "scripts/release-size.ps1"
+      ],
+      "tests": [
+        "scripts/release-size.ps1"
+      ]
+    },
+    {
+      "id": "audio-pipeline",
+      "title": "音频管线：MuseScore/FL 创作 → AU 统一包装 → ffmpeg 归一响度转 OGG；Wwise 只用于设计期",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "docs/AUDIO.md",
+        "scripts/audio-master.ps1"
+      ],
+      "tests": [
+        "scripts/audio-master.ps1"
+      ]
+    },
+    {
+      "id": "docs-mechanics",
+      "title": "机制定稿：即时回合制、六维属性、固定结算顺序、内嵌游戏层",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "docs/MECHANICS.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "time-model",
+      "title": "时间模型：由事件推进而非墙钟；回合只在需要同时性的场合使用；班次按客人数算不按秒算",
+      "status": "done",
+      "after": [
+        "docs-mechanics"
+      ],
+      "files": [
+        "docs/MECHANICS.md"
+      ],
+      "tests": []
+    },
+    {
+      "id": "core-domain",
+      "title": "领域模型：Stage(64) / Character / Attributes / World",
+      "status": "done",
+      "after": [
+        "docs-mechanics"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Stage.cs",
+        "core/src/Clarry.Core/Character.cs",
+        "core/src/Clarry.Core/Attributes.cs",
+        "core/src/Clarry.Core/World.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "seat-tier",
+      "title": "主次分层：六十四席只留给主角色，店员不占台位也不进配对",
+      "status": "done",
+      "after": [
+        "core-domain"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Character.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "scene-picker",
+      "title": "幕的配对：按互温确定性决定谁和谁同台，落单的人单独一幕",
+      "status": "done",
+      "after": [
+        "core-domain"
+      ],
+      "files": [
+        "core/src/Clarry.Core/ScenePicker.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-scene-picker.ps1"
+      ]
+    },
+    {
+      "id": "wish-pool",
+      "title": "许愿池：观众每场三次干预，四种成套愿望（见面/点火/遗忘/叫停）",
+      "status": "done",
+      "after": [
+        "scene-picker"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Wish.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Core/ScenePicker.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-wish.ps1"
+      ]
+    },
+    {
+      "id": "world-scenes",
+      "title": "多幕并行（结构与接口）：各幕有自己的参与者、回合与历史；一人不能同时在两幕；六十四是全世界上限",
+      "status": "done",
+      "after": [
+        "scene-picker",
+        "agent-driver",
+        "time-model"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Scene.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Core/ScenePicker.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-scenes.ps1"
+      ]
+    },
+    {
+      "id": "multi-loop",
+      "title": "多幕驱动：RoundLoop 同时推进所有开着的幕，而不是只推活跃的那一个",
+      "status": "done",
+      "after": [
+        "world-scenes",
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs"
+      ],
+      "tests": [
+        "scripts/test-multi-loop.ps1"
+      ]
+    },
+    {
+      "id": "venues",
+      "title": "场所与经营：agent 开店、店员、菜单、库存、收支，其他 agent 来消费与工作",
+      "status": "done",
+      "after": [
+        "seat-tier",
+        "world-scenes"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Venue.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-venues.ps1"
+      ]
+    },
+    {
+      "id": "shift-loop",
+      "title": "班次循环：开张→来客→点单→出菜→评价→散场；队列而非同步，一次回合计都不用",
+      "status": "done",
+      "after": [
+        "venues"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Shift.cs",
+        "core/src/Clarry.Core/Venue.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-shift.ps1"
+      ]
+    },
+    {
+      "id": "audience-follow",
+      "title": "观众视线：默认跟随最近变化的幕，可切换；许愿可以拿来把镜头挪到某一幕",
+      "status": "done",
+      "after": [
+        "world-scenes",
+        "wish-pool"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Scene.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/Wish.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "stage/index.html"
+      ],
+      "tests": [
+        "scripts/test-audience.ps1"
+      ]
+    },
+    {
+      "id": "core-resolver",
+      "title": "回合结算器：Order 六型、固定八步顺序、无骰子",
+      "status": "done",
+      "after": [
+        "core-domain"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/Round.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "rules-borrowed",
+      "title": "借来的规则：魂3 的余火、法环的韧性、魂系的失名、AI LIMIT 的可回复余力",
+      "status": "done",
+      "after": [
+        "core-resolver",
+        "docs-mechanics"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Attributes.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "docs/MECHANICS.md"
+      ],
+      "tests": [
+        "scripts/test-souls.ps1"
+      ]
+    },
+    {
+      "id": "persistence",
+      "title": "世界落盘：JSON + 临时文件改名，CLARRY_DATA 可配，中文直出",
+      "status": "done",
+      "after": [
+        "core-domain"
+      ],
+      "files": [
+        "core/src/Clarry.Core/WorldStore.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "minigame-civlike",
+      "title": "内嵌策略小游戏：确定性 4X，结果折算回六维",
+      "status": "done",
+      "after": [
+        "core-resolver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/MiniGame.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "agent-activity",
+      "title": "Agent 自定义活动：世界只记规则、招法与裁决，不解释规则，六种动作不再是天花板",
+      "status": "done",
+      "after": [
+        "core-resolver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Activity.cs",
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-activity-and-cards.ps1"
+      ]
+    },
+    {
+      "id": "minigame-cards",
+      "title": "黑白对局：两人纸牌，灵魂伤害推等级，种子决定牌序（有运气但可复现）",
+      "status": "done",
+      "after": [
+        "minigame-civlike"
+      ],
+      "files": [
+        "core/src/Clarry.Core/MiniGame.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-activity-and-cards.ps1"
+      ]
+    },
+    {
+      "id": "minigame-coop",
+      "title": "守夜：合作局，出力由属性合成，没有赢家只有一起撑住",
+      "status": "done",
+      "after": [
+        "minigame-civlike"
+      ],
+      "files": [
+        "core/src/Clarry.Core/MiniGame.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-address-and-vigil.ps1"
+      ]
+    },
+    {
+      "id": "minigame-board",
+      "title": "大富翁：环行棋盘，2~4 人，确定性种子决定步数，买地、收租、抵押、破产",
+      "status": "done",
+      "after": [
+        "minigame-cards",
+        "world-scenes"
+      ],
+      "files": [
+        "core/src/Clarry.Core/BoardGame.cs",
+        "core/src/Clarry.Core/MiniGame.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-board-game.ps1"
+      ]
+    },
+    {
+      "id": "divination",
+      "title": "占卜与占星术士：塔罗牌与预言水晶随身；炼金工房是基础建筑、自带后院这个区域；天文台是扩展建筑，只能建在区域里。四样齐备解锁术士，能给人建议、报天象与天气，熟练度到线后收费",
+      "status": "done",
+      "after": [
+        "world-scenes",
+        "core-resolver",
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Divination.cs",
+        "core/src/Clarry.Core/Character.cs",
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-divination.ps1"
+      ]
+    },
+    {
+      "id": "nicknames",
+      "title": "称呼：角色自己定叫法，写进 prompt，所以之后每一句都会用它",
+      "status": "done",
+      "after": [
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Attributes.cs",
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-address-and-vigil.ps1"
+      ]
+    },
+    {
+      "id": "agent-memory",
+      "title": "灵活记忆：SQLite 存每人独立的记忆，权重按事情分量，衰减与容量由人格决定",
+      "status": "done",
+      "after": [
+        "core-domain",
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Memory.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "docs/MEMORY.md"
+      ],
+      "tests": [
+        "scripts/test-memory.ps1"
+      ]
+    },
+    {
+      "id": "traits-drift",
+      "title": "性格会变：每个性格一条强度，只增不减只轻不消，写进 prompt 才能演出来",
+      "status": "done",
+      "after": [
+        "core-resolver",
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/TraitMeter.cs",
+        "core/src/Clarry.Core/Character.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs"
+      ],
+      "tests": [
+        "scripts/test-traits.ps1"
+      ]
+    },
+    {
+      "id": "server-api",
+      "title": "HTTP 表面：世界、人物、幕配对、许愿、活动、称呼、记忆、主次分级、回合、小游戏、历史、存盘",
+      "status": "done",
+      "after": [
+        "core-resolver",
+        "persistence",
+        "minigame-civlike"
+      ],
+      "files": [
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": []
+    },
+    {
+      "id": "build-script",
+      "title": "构建脚本：先停服务再编译（服务会锁 dll）",
+      "status": "done",
+      "after": [],
+      "files": [
+        "rebuild.ps1"
+      ],
+      "tests": []
+    },
+    {
+      "id": "dsh-header-button",
+      "title": "DSH 顶部按钮：点开切换舞台视图（已验证显示 x/64）",
+      "status": "done",
+      "after": [
+        "server-api"
+      ],
+      "files": [
+        "src/client/index.js",
+        "src/host/index.js",
+        "cordis.patch.yml",
+        "package.json"
+      ],
+      "tests": []
+    },
+    {
+      "id": "agent-driver",
+      "title": "Agent 驱动层：任意 HTTP 可及的 LLM 提交 Order；上限是六十四位主角色，不是总人数",
+      "status": "done",
+      "after": [
+        "server-api"
+      ],
+      "files": [
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Core/HttpLlmDriver.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "scripts/run-real-scene.ps1"
+      ],
+      "tests": [
+        "scripts/test-loop.ps1"
+      ]
+    },
+    {
+      "id": "user-seat-gate",
+      "title": "用户席位闸门：一轮中有人指向用户时挂起该轮，等他下令或超时放行（已验证）",
+      "status": "done",
+      "after": [
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Server/RoundLoop.cs"
+      ],
+      "tests": [
+        "scripts/test-user-gate.ps1"
+      ]
+    },
+    {
+      "id": "stage-view",
+      "title": "舞台视图：台词流 + 席位卡 + 六维条 + 用户下令面板，托管在 /stage",
+      "status": "done",
+      "after": [
+        "dsh-header-button",
+        "agent-driver"
+      ],
+      "files": [
+        "stage/index.html",
+        "src/client/index.js",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-user-gate.ps1"
+      ]
+    },
+    {
+      "id": "art-portraits",
+      "title": "像素立绘：百炼出图 → 中性色抠底 + 面积降采样 + 限色 + 最近邻放大，接入舞台席位卡",
+      "status": "done",
+      "after": [
+        "docs-style"
+      ],
+      "files": [
+        "scripts/pixelize.py",
+        "scripts/cast_sheet.py",
+        "assets/portraits",
+        "stage/index.html",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/cast_sheet.py"
+      ]
+    },
+    {
+      "id": "art-expressions",
+      "title": "表情差分：同一立绘换表情，按 Order 结果切换",
+      "status": "done",
+      "after": [
+        "art-portraits"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Expression.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "stage/index.html",
+        "assets/portraits"
+      ],
+      "tests": [
+        "scripts/test-expression.ps1"
+      ]
+    },
+    {
+      "id": "art-lineweight",
+      "title": "lineweight 线稿层：像素之外的细线版本，用于特写与回忆镜头",
+      "status": "done",
+      "after": [
+        "art-portraits",
+        "art-expressions"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Shot.cs",
+        "core/src/Clarry.Core/Expression.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "stage/index.html",
+        "scripts/check-art.ps1",
+        "docs/ART.md",
+        "assets"
+      ],
+      "tests": [
+        "scripts/test-lineweight.ps1"
+      ]
+    },
+    {
+      "id": "unity-stage",
+      "title": "Unity 舞台客户端：共享 C# 模型，负责像素角色与 Live2D 表现",
+      "status": "todo",
+      "after": [
+        "art-portraits",
+        "server-api"
+      ],
+      "files": [
+        "unity"
+      ],
+      "tests": []
+    }
+  ],
+  "title": "Clarry — Agent 戏剧平台"
+}
