@@ -162,6 +162,90 @@
       ]
     },
     {
+      "id": "plea",
+      "title": "请求：agent 走到卡住时向世界提出一个具体、可被回应的请求；三条回应路（另一个 agent 接了 / 祈愿点应了 / 谁也没接而自己改道），前两条都不是必要条件，观众的缺席是合法的默认状态",
+      "status": "done",
+      "after": [
+        "wish-pool"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Plea.cs",
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-plea.ps1"
+      ]
+    },
+    {
+      "id": "shrine",
+      "title": "祈愿点与神明：第四面墙。请求写在一块具体的地方，应它的是某一位有名有姓的神，agent 的认知里从不出现 Clarry 或观众",
+      "status": "done",
+      "after": [
+        "plea"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Shrine.cs",
+        "core/src/Clarry.Core/Plea.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-shrine.ps1"
+      ]
+    },
+    {
+      "id": "identity",
+      "title": "身份认知：prompt 里只有角色，没有 agent、没有玩家、没有观众。第一人称即本人，对面即那个人；座位不挂身份标记，IsPlayer 与幕 id 都不进 prompt",
+      "status": "done",
+      "after": [
+        "agent-driver"
+      ],
+      "files": [
+        "core/src/Clarry.Core/AgentDriver.cs"
+      ],
+      "tests": [
+        "scripts/test-prompt-identity.ps1"
+      ]
+    },
+    {
+      "id": "wish-rework",
+      "title": "许愿降级：从四种干预砍到三种——把镜头挪走、应一个已在等回应的请求、叫停；见面/点火/遗忘是 agent 自己能做的事，砍掉的词不再被认识",
+      "status": "done",
+      "after": [
+        "plea",
+        "shrine"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Wish.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-wish.ps1"
+      ]
+    },
+    {
+      "id": "fourth-wall",
+      "title": "极低概率的察觉：某一次结算里，一个 agent 察觉到自己被看着。一次性、不可重复、不可证实、不可利用；察觉之后它只能说出来，世界不承认任何东西。待定，先不做",
+      "status": "todo",
+      "after": [
+        "shrine"
+      ],
+      "files": [
+        "core/src/Clarry.Core/Glitch.cs"
+      ],
+      "tests": []
+    },
+    {
       "id": "world-scenes",
       "title": "多幕并行（结构与接口）：各幕有自己的参与者、回合与历史；一人不能同时在两幕；六十四是全世界上限",
       "status": "done",
@@ -196,6 +280,39 @@
       ],
       "tests": [
         "scripts/test-multi-loop.ps1"
+      ]
+    },
+    {
+      "id": "load-gate",
+      "title": "负载闸门与配置：同时在飞的驱动器有上限（八个人同时要说话，只放四路），单路与每幕每轮各有时间预算；端口、路径、上限集中在一处从环境变量读",
+      "status": "done",
+      "after": [
+        "multi-loop"
+      ],
+      "files": [
+        "core/src/Clarry.Server/ClarryOptions.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs",
+        "core/src/Clarry.Core/AgentDriver.cs"
+      ],
+      "tests": [
+        "scripts/test-load.ps1"
+      ]
+    },
+    {
+      "id": "run-ledger",
+      "title": "运行账本：每一拍在盘上留一行（问了几人、几人没理由开口、峰值并发、丢了几条、耗时），另有汇总；用来回答「昨天那一场花了多少、哪一拍慢」",
+      "status": "done",
+      "after": [
+        "load-gate"
+      ],
+      "files": [
+        "core/src/Clarry.Server/RunLog.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "tests": [
+        "scripts/test-runs.ps1"
       ]
     },
     {

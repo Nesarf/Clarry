@@ -9,7 +9,8 @@ public enum OrderKind
     Give,      // cost 1 reserve
     Withhold,  // cost 0, strain +1
     Reveal,    // cost 2
-    Divine     // cost 1, needs the apparatus
+    Divine,    // cost 1, needs the apparatus
+    Answer     // cost 0, answers somebody's open plea
 }
 
 /// <summary>
@@ -27,6 +28,7 @@ public static class OrderKindText
         OrderKind.Withhold => "沉默",
         OrderKind.Reveal => "揭露",
         OrderKind.Divine => "占卜",
+        OrderKind.Answer => "应承",
         _ => kind.ToString()
     };
 }
@@ -56,6 +58,13 @@ public sealed class Order
     public string? Nickname { get; init; }
 
     /// <summary>
+    /// What this character makes of the target, in their own words. An impression travels with
+    /// an order for the same reason a nickname does: it is this character's own judgement, and
+    /// the model has no other road to it.
+    /// </summary>
+    public string? Impression { get; init; }
+
+    /// <summary>
     /// Which apparatus a divination uses. Null means "whichever one they hold first" -- a
     /// reader with one tool should not have to name it.
     /// </summary>
@@ -67,6 +76,12 @@ public sealed class Order
     /// </summary>
     public string? Advice { get; init; }
 
+    /// <summary>
+    /// Which open request this order is answering. Answering is a promise, not a transfer: the
+    /// thing asked for still has to be handed over separately, and both are needed to move.
+    /// </summary>
+    public string? PleaId { get; init; }
+
     public int Cost => Kind switch
     {
         OrderKind.Speak => 0,
@@ -76,6 +91,7 @@ public sealed class Order
         OrderKind.Withhold => 0,
         OrderKind.Reveal => 2,
         OrderKind.Divine => 1,
+        OrderKind.Answer => 0,
         _ => 0
     };
 

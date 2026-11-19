@@ -31,8 +31,22 @@ public sealed class Attributes
     /// </summary>
     public Dictionary<string, string> Names { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// What this character makes of someone, in their own words. One short line per person, the
+    /// way a first impression actually sits in a head: "露比，一位长得非常漂亮的猫人小姐".
+    ///
+    /// Absolute to whoever holds it and relative between any two holders. 露比 does not change
+    /// because two people describe her differently -- what changes is the story, because the gap
+    /// between two impressions of the same person is where trouble comes from. A bond is a number
+    /// and says nothing; this says what a person saw.
+    /// </summary>
+    public Dictionary<string, string> Impressions { get; } = new(StringComparer.Ordinal);
+
     public string NameFor(string id) =>
         Names.TryGetValue(id, out var name) && !string.IsNullOrWhiteSpace(name) ? name : id;
+
+    public string? ImpressionOf(string id) =>
+        Impressions.TryGetValue(id, out var text) && !string.IsNullOrWhiteSpace(text) ? text : null;
 
     public int BondWith(string id) => Bond.TryGetValue(id, out var v) ? v : 0;
 

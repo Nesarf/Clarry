@@ -88,6 +88,19 @@ public sealed class Character
     {
         public string? Role { get; init; }
         public string? Summary { get; init; }
+
+        /// <summary>
+        /// How this person would answer "who are you" without stopping to think. One sentence,
+        /// in their own terms, with the judgement left in: a cat woman does not say "a cat
+        /// person", she says a very beautiful one.
+        ///
+        /// This is deliberately not a trait list. A card that only lists traits produces a
+        /// character who describes herself in traits, and a character who describes herself in
+        /// adjectives produces a scene made of adjectives. One self-description with an opinion
+        /// inside it is what makes her a person rather than a spec sheet.
+        /// </summary>
+        public string? SelfImage { get; init; }
+
         public List<string> Traits { get; init; } = new();
         public string? Voice { get; init; }
         public List<string> Goals { get; init; } = new();

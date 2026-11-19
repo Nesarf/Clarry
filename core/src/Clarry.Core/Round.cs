@@ -297,6 +297,22 @@ public static class RoundResolver
             result.Notes.Add($"{actor.Id} 从此管 {target.Id} 叫「{nickname}」");
         }
 
+        // 5.85 impressions -- what one person makes of another. One short line, kept privately:
+        // two people looking at the same face write two different lines, and that gap is where
+        // most trouble between people comes from. The world never checks them against anything.
+        foreach (var order in accepted.Where(o => !string.IsNullOrWhiteSpace(o.Impression) && o.TargetId is not null))
+        {
+            var actor = world.Find(order.ActorId)!;
+            var target = world.Find(order.TargetId!);
+            if (target is null || target.Id == actor.Id) continue;
+
+            var impression = order.Impression!.Trim();
+            if (impression.Length > 60) impression = impression[..60];
+
+            actor.Attributes.Impressions[target.Id] = impression;
+            result.Notes.Add($"{actor.Id} 记住了 {target.Id}：{impression}");
+        }
+
         // 5.9 traits -- what a round does to a person over time. Prickliness does not vanish
         // when honesty grows; it quiets. Nothing is ever replaced here, only added to and
         // turned down, which is the difference between a character who changes and one who
@@ -333,6 +349,23 @@ public static class RoundResolver
             var querent = order.TargetId is null ? null : world.Find(order.TargetId);
             var outcome = Divination.Perform(world, result, actor, tool, querent, order.Text, order.Advice);
             if (!outcome.Ok) result.Notes.Add($"{order.ActorId} 想占卜，但{outcome.Reason}");
+        }
+
+        // 5.96 answering -- a promise, not a transfer. Answering settles the request; whether the
+        // thing asked for actually changes hands is a separate give. Both are needed, which is
+        // what stops a plea from being solved by words alone.
+        foreach (var order in accepted.Where(o => o.Kind == OrderKind.Answer && o.PleaId is not null))
+        {
+            var actor = world.Find(order.ActorId)!;
+            var (pled, reason) = Pleas.Answer(world, order.PleaId!, actor);
+            if (pled is null)
+            {
+                result.Notes.Add($"{order.ActorId} 想应一条请求，但{reason}");
+                continue;
+            }
+
+            result.Revealed.Add($"{order.ActorId} 应了 {pled.FromId} 的请求");
+            result.Notes.Add($"{order.ActorId} 应下「{pled.Needs}」");
         }
 
         // 6+7. clues and convergence are story-level; the resolver only reports.

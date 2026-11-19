@@ -53,6 +53,10 @@ public sealed class WorldSnapshot
     public List<Wish> Wishes { get; set; } = new();
     public List<Activity> Activities { get; set; } = new();
     public List<Venue> Venues { get; set; } = new();
+    public List<Plea> Pleas { get; set; } = new();
+    public int NextPleaNumber { get; set; } = 1;
+    public List<Shrine> Shrines { get; set; } = new();
+    public List<Deity> Deities { get; set; } = new();
 
     /// <summary>The sky over the whole world. Null in saves written before it existed.</summary>
     public Sky? Sky { get; set; }
@@ -134,6 +138,10 @@ public sealed class WorldStore
         Wishes = world.Wishes.ToList(),
         Activities = world.Activities.ToList(),
         Venues = world.Venues.ToList(),
+        Pleas = world.Pleas.ToList(),
+        NextPleaNumber = world.NextPleaNumber,
+        Shrines = world.Shrines.ToList(),
+        Deities = world.Deities.ToList(),
         Sky = world.Sky,
         ForcedPairA = world.ForcedPairA,
         ForcedPairB = world.ForcedPairB,
@@ -192,11 +200,28 @@ public sealed class WorldStore
             world.Scenes.Add(scene);
         }
 
-        world.WishBudget = snap.WishBudget;
-        world.WishesLeft = snap.WishesLeft;
+        // WishBudget is a design number, not a saved one. An old world that remembered three
+        // must not keep a budget the design has since lowered; what is left is restored, and
+        // what the maximum is comes from the code.
+        world.WishesLeft = Math.Min(snap.WishesLeft, world.WishBudget);
         world.Wishes.AddRange(snap.Wishes);
         world.Activities.AddRange(snap.Activities);
         world.Venues.AddRange(snap.Venues);
+        world.Pleas.AddRange(snap.Pleas);
+        world.NextPleaNumber = Math.Max(snap.NextPleaNumber, world.Pleas.Count + 1);
+
+        // The constructor seeds one shrine so a new world is usable at once; a restore replaces
+        // that with whatever was saved, and keeps the default when the save predates shrines.
+        if (snap.Shrines.Count > 0)
+        {
+            world.Shrines.Clear();
+            world.Shrines.AddRange(snap.Shrines);
+        }
+        if (snap.Deities.Count > 0)
+        {
+            world.Deities.Clear();
+            world.Deities.AddRange(snap.Deities);
+        }
         world.Sky = snap.Sky ?? new Sky();
         world.ForcedPairA = snap.ForcedPairA;
         world.ForcedPairB = snap.ForcedPairB;

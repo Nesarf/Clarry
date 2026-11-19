@@ -37,6 +37,15 @@ public sealed class DriverContext
     /// one person, filtered by their own memory style and faded by their own decay.
     /// </summary>
     public IReadOnlyList<Memory> Memories { get; init; } = Array.Empty<Memory>();
+
+    /// <summary>
+    /// Requests from others that this character could answer. This is the social road out of
+    /// being stuck, and the reason a plea is worth making at all.
+    /// </summary>
+    public IReadOnlyList<Plea> OpenPleas { get; init; } = Array.Empty<Plea>();
+
+    /// <summary>What this character asked for and is still waiting on.</summary>
+    public IReadOnlyList<Plea> OwnPleas { get; init; } = Array.Empty<Plea>();
 }
 
 /// <summary>What a driver came back with. A failure is data, not an exception.</summary>
@@ -84,20 +93,30 @@ public interface IAgentDriver
 public sealed class ScriptedDriver : IAgentDriver
 {
     private readonly Func<DriverContext, IEnumerable<Order>> _script;
+    private readonly int _delayMs;
 
-    public ScriptedDriver(Func<DriverContext, IEnumerable<Order>> script) => _script = script;
+    public ScriptedDriver(Func<DriverContext, IEnumerable<Order>> script, int delayMs = 0)
+    {
+        _script = script;
+        _delayMs = Math.Max(0, delayMs);
+    }
 
     public string Kind => "scripted";
 
-    public Task<DriverOutcome> DriveAsync(DriverContext ctx, CancellationToken ct)
+    public async Task<DriverOutcome> DriveAsync(DriverContext ctx, CancellationToken ct)
     {
+        // A driver that answers without ever yielding cannot exercise a concurrency gate. The
+        // delay exists so a test can make eight seats answer slowly enough to watch the ceiling
+        // hold -- there is no other way to see a gate work.
+        if (_delayMs > 0) await Task.Delay(_delayMs, ct).ConfigureAwait(false);
+
         var outcome = new DriverOutcome();
         outcome.Orders.AddRange(_script(ctx));
-        return Task.FromResult(outcome);
+        return outcome;
     }
 
     /// <summary>The simplest useful script: alternate between speaking and acting.</summary>
-    public static ScriptedDriver Alternating() => new(ctx => new[]
+    public static ScriptedDriver Alternating(int delayMs = 0) => new(ctx => new[]
     {
         new Order
         {
@@ -107,7 +126,7 @@ public sealed class ScriptedDriver : IAgentDriver
                 ? $"{ctx.Self.Name}看着屋里，没说什么。"
                 : $"{ctx.Self.Name}换了个姿势。"
         }
-    });
+    }, delayMs);
 }
 
 /// <summary>A parsed order draft, before it becomes an <see cref="Order"/>.</summary>
@@ -123,11 +142,17 @@ public sealed class OrderDraft
     /// <summary>Optional: what this character will call the target from now on.</summary>
     public string? Nickname { get; set; }
 
+    /// <summary>Optional: what this character makes of the target, in their own words.</summary>
+    public string? Impression { get; set; }
+
     /// <summary>Optional: which apparatus a divination uses.</summary>
     public string? Tool { get; set; }
 
     /// <summary>Optional: a line left for the querent, if this character is an astrologer.</summary>
     public string? Advice { get; set; }
+
+    /// <summary>Optional: which open request this order answers.</summary>
+    public string? PleaId { get; set; }
 }
 
 /// <summary>
@@ -137,10 +162,15 @@ public sealed class OrderDraft
 public static class DriverPrompt
 {
     public const string Rules = """
-        You are playing a character in Clarry, a theatre where agents act for each other.
+        You are a person living in a house with other people.
         Rounds are simultaneous: what you declare now takes effect only after the round is
         settled, together with everyone else's declarations. You cannot react to an action
         taken in the same round.
+
+        You are not playing a character, and nobody is playing one for you. There is no word
+        in your mouth for what is behind a face: if you catch yourself reaching for one, say
+        what the person is doing instead. Nothing outside this house is any of your business,
+        and the other people here are exactly who they appear to be.
 
         Dice do not decide anything here. Do not ask for a roll. The only randomness allowed
         is inside a tabletop interlude, which you may propose as an Act.
@@ -164,8 +194,10 @@ public static class DriverPrompt
                        alembic turns a remedy out of the hour, observatory names the weather.
                        Add "tool" to choose one, "text" to say what you are asking about, and
                        "advice" to leave the querent a line they will act on.
+          answer   0   answer one open request. put its id in "pleaId". this is a promise, not a
+                       transfer: whatever they asked for still has to be handed over separately.
 
-        Those seven are not the limit of what you can do. When you want to run something they
+        Those eight are not the limit of what you can do. When you want to run something they
         cannot express -- a drinking contest, a wager, a race, a trick, a shared ritual --
         attach an "activity" to an act and invent the rules yourself:
 
@@ -181,6 +213,11 @@ public static class DriverPrompt
         You may also decide what you call someone. Add "nickname" to any order that targets
         them, and from then on every line of yours should use that name instead of their id.
         Naming someone is how two characters start to sound close, so use it when it is true.
+
+        You decide what you make of people too. Add "impression" to an order that targets them:
+        one short line, in your own words, the way you would describe them to somebody who had
+        never met them. It stays yours -- nobody else sees it, and nothing checks whether it is
+        fair. It may be wrong, and being wrong about someone is a story.
 
         Apparatus sits on three levels and they are not interchangeable. Cards and a crystal are
         carried, and go where you go. A plot is ground -- a back garden is one of them -- and a
@@ -209,21 +246,37 @@ public static class DriverPrompt
         var sb = new StringBuilder();
         var self = ctx.Self;
 
-        sb.AppendLine($"Round {ctx.RoundNumber}. You are {self.Name} (id: {self.Id}).");
+        sb.AppendLine($"Round {ctx.RoundNumber}.");
+
+        // Who she is, in her own words. Everything below this line is what other people know,
+        // and the two are allowed to disagree -- that gap is where most of a character lives.
+        var selfImage = string.IsNullOrWhiteSpace(self.Sheet.SelfImage)
+            ? "someone who lives here"
+            : self.Sheet.SelfImage!;
+        sb.AppendLine($"You are {self.Name} -- {selfImage}.");
+        sb.AppendLine("That is who you are. Whatever else is written about you below is what other people know, which is not always the same thing.");
+
+        // IsPlayer is loading information -- who is holding this seat -- and never reaches the
+        // prompt. On stage that character is simply a person like the rest, and telling the model
+        // there is an audience for its draft would hand it the fourth wall for free.
+        if (!string.IsNullOrWhiteSpace(self.Sheet.Role)) sb.AppendLine($"What people call your line of work: {self.Sheet.Role}");
+        if (!string.IsNullOrWhiteSpace(self.Sheet.Summary)) sb.AppendLine($"What others know about you: {self.Sheet.Summary}");
+        if (!string.IsNullOrWhiteSpace(self.Sheet.Voice)) sb.AppendLine($"How you sound: {self.Sheet.Voice}");
+
         // Which scene, not which world. Somewhere else in the same building other people may be
         // in the middle of their own round; this seat is not there and should not speak for them.
         if (ctx.Scene is { } scene)
         {
-            var where = string.IsNullOrWhiteSpace(scene.Title) ? scene.Id : $"{scene.Id}（{scene.Title}）";
+            // The scene's id is bookkeeping; a person knows the room by its name, or not at all.
+            var where = string.IsNullOrWhiteSpace(scene.Title)
+                ? "a room with no name on the door"
+                : $"a place called {scene.Title}";
             sb.AppendLine($"You are in {where}. Only the people listed below are here with you.");
         }
+
         // The sky is shared by everyone under the roof, which is what makes it worth hearing
         // about from someone else -- and worth paying an astrologer to name.
         sb.AppendLine($"The sky: {ctx.World.Sky.Describe()}.");
-        if (self.IsPlayer) sb.AppendLine("This seat belongs to a human; you are drafting for them and will be reviewed.");
-        if (!string.IsNullOrWhiteSpace(self.Sheet.Role)) sb.AppendLine($"Role: {self.Sheet.Role}");
-        if (!string.IsNullOrWhiteSpace(self.Sheet.Summary)) sb.AppendLine($"About you: {self.Sheet.Summary}");
-        if (!string.IsNullOrWhiteSpace(self.Sheet.Voice)) sb.AppendLine($"Voice: {self.Sheet.Voice}");
         // The meter rather than the sheet: what they were declared as is history, what shows
         // now is who they are, and a trait that is climbing should be allowed to show.
         var traitsNow = self.Traits.Describe();
@@ -258,9 +311,14 @@ public static class DriverPrompt
             {
                 // Role only. Their summary was the single fattest per-peer cost, and the model
                 // learns who they are by watching them speak anyway.
-                var bits = new List<string> { p.Id };
+                // Name first, id second: the name is what a person is called, the id is what a
+                // ledger calls them. Both are needed -- orders target ids -- but only one of
+                // them is who they are.
+                var bits = new List<string> { $"{p.Name}（{p.Id}）" };
                 if (!string.IsNullOrWhiteSpace(p.Sheet.Role)) bits.Add(p.Sheet.Role!);
-                bits.Add(p.IsPlayer ? "(the human)" : "(an agent)");
+                // No tag for what is driving them. A face at this table is a person; whether a
+                // model, a script, or the audience is behind it belongs to the loading dock.
+                bits.Add(p.IsPlayer ? "(在座)" : "(在场)");
                 sb.AppendLine("  " + string.Join(" -- ", bits));
             }
         }
@@ -314,6 +372,43 @@ public static class DriverPrompt
             foreach (var heard in self.Advice) sb.AppendLine($"  {heard.FromId}：{heard.Text}");
         }
 
+        // Being stuck is public on purpose. This block is the social road out of it: somebody
+        // else's problem, visible to whoever could do something about it.
+        if (ctx.OpenPleas.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Others are stuck and have said so. Answering one is a way to matter here:");
+            foreach (var plea in ctx.OpenPleas)
+            {
+                var who = plea.ToId is null ? "谁都可以" : "指名给你";
+                sb.AppendLine($"  {plea.Id}  {plea.FromId} {BlockedText.Of(plea.Blocked)}：{plea.Needs}（{who}，还剩 {plea.Lifetime} 轮）");
+                sb.AppendLine($"        「{plea.Text}」");
+            }
+            sb.AppendLine("To answer one: kind answer, pleaId set to it, targetId set to whoever asked.");
+        }
+
+        if (ctx.World.Shrines.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("Places where a request can be left, and who is said to hear them:");
+            foreach (var shrine in ctx.World.Shrines)
+            {
+                var god = ctx.World.Deities.FirstOrDefault(d => d.Id == shrine.DeityId);
+                if (god is null) continue;
+                sb.AppendLine($"  {shrine.Name} -- {god.Name}，司掌{god.Domain}（应过 {god.Answered} 次）");
+            }
+            sb.AppendLine("A request left at one of these is addressed to that god. Whether it answers is not yours to know.");
+        }
+
+        if (ctx.OwnPleas.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("What you asked for and are still waiting on:");
+            foreach (var plea in ctx.OwnPleas)
+                sb.AppendLine($"  {plea.Id}  {BlockedText.Of(plea.Blocked)}：{plea.Needs}（还剩 {plea.Lifetime} 轮）");
+            sb.AppendLine("If nobody answers, you go another way. That is allowed, and it is not a failure.");
+        }
+
         if (self.Attributes.Names.Count > 0)
         {
             sb.AppendLine();
@@ -322,6 +417,17 @@ public static class DriverPrompt
             {
                 var who = ctx.Peers.FirstOrDefault(p => p.Id == id);
                 sb.AppendLine($"  {id}{(who is null ? "" : "（" + who.Name + "）")} -- 你叫她/他「{name}」");
+            }
+        }
+
+        if (self.Attributes.Impressions.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("How you see them so far, in your own words. This is your judgement, not a fact:");
+            foreach (var (id, impression) in self.Attributes.Impressions)
+            {
+                var who = ctx.Peers.FirstOrDefault(p => p.Id == id);
+                sb.AppendLine($"  {id}{(who is null ? "" : "（" + who.Name + "）")} -- {impression}");
             }
         }
 
@@ -413,8 +519,10 @@ public static class OrderParser
                 Text = d.Text,
                 Activity = d.Activity,
                 Nickname = string.IsNullOrWhiteSpace(d.Nickname) ? null : d.Nickname.Trim(),
+                Impression = string.IsNullOrWhiteSpace(d.Impression) ? null : d.Impression.Trim(),
                 Tool = ApparatusText.TryParse(d.Tool, out var tool) ? tool : null,
                 Advice = string.IsNullOrWhiteSpace(d.Advice) ? null : d.Advice.Trim(),
+                PleaId = string.IsNullOrWhiteSpace(d.PleaId) ? null : d.PleaId.Trim(),
                 Sequence = seq++
             });
         }

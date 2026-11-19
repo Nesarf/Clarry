@@ -25,6 +25,13 @@ public sealed class LoopSnapshot
     /// <summary>How many scenes are open right now.</summary>
     public int OpenScenes { get; init; }
 
+    /// <summary>Drivers currently waiting on an answer, and the most that ever were at once.</summary>
+    public int InFlight { get; init; }
+    public int PeakInFlight { get; init; }
+
+    /// <summary>The ceiling those two are measured against.</summary>
+    public int MaxConcurrent { get; init; }
+
     public string? StopReason { get; init; }
     public int IntervalMs { get; init; }
     public int MaxRounds { get; init; }
@@ -76,8 +83,20 @@ public sealed class RoundLoop
     private readonly World _world;
     private readonly WorldStore _store;
     private readonly MemoryStore _memories;
+    private readonly ClarryOptions _options;
+    private readonly RunLog? _runs;
     private readonly ConcurrentDictionary<string, IAgentDriver> _drivers = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<LoopLine> _log = new();
+
+    /// <summary>
+    /// The gate that keeps a full house from becoming a thundering herd. Asking every seat at
+    /// once is what a naive loop does, and it is also how you discover the rate limit of whatever
+    /// is behind them -- usually by having the evening fail rather than run slowly.
+    /// </summary>
+    private readonly SemaphoreSlim _inFlight;
+
+    private int _inFlightNow;
+    private int _peakInFlight;
 
     /// <summary>Shared with the HTTP surface so a manual call and a loop tick never interleave.</summary>
     private readonly SemaphoreSlim _gate;
@@ -99,12 +118,18 @@ public sealed class RoundLoop
 
     private const int LogCap = 200;
 
-    public RoundLoop(World world, WorldStore store, MemoryStore memories, SemaphoreSlim gate)
+    public RoundLoop(World world, WorldStore store, MemoryStore memories, SemaphoreSlim gate,
+                     ClarryOptions? options = null, RunLog? runs = null)
     {
         _world = world;
         _store = store;
         _memories = memories;
         _gate = gate;
+        _options = options ?? ClarryOptions.FromEnvironment();
+        _runs = runs;
+        _inFlight = new SemaphoreSlim(_options.MaxConcurrentDrivers, _options.MaxConcurrentDrivers);
+        _intervalMs = _options.BeatIntervalMs;
+        _userWaitMs = _options.UserWaitMs;
     }
 
     public bool Running => _running;
@@ -138,6 +163,7 @@ public sealed class RoundLoop
 
         var cap = _maxRounds == 0 ? "不限拍数" : $"最多 {_maxRounds} 拍";
         Say($"开场：每 {_intervalMs} 毫秒推进一拍，每一拍让所有开着的幕各走一轮，{cap}");
+        Say($"闸门：{_options.Describe()}");
         _task = Task.Run(() => RunAsync(_cts.Token));
     }
 
@@ -161,6 +187,9 @@ public sealed class RoundLoop
             Round = open.Count == 0 ? 0 : open.Max(s => s.Length),
             Beats = _beats,
             OpenScenes = open.Count,
+            InFlight = Volatile.Read(ref _inFlightNow),
+            PeakInFlight = Volatile.Read(ref _peakInFlight),
+            MaxConcurrent = _options.MaxConcurrentDrivers,
             StopReason = _stopReason,
             IntervalMs = _intervalMs,
             MaxRounds = _maxRounds,
@@ -196,6 +225,17 @@ public sealed class RoundLoop
 
                 _beats++;
 
+                // Per-beat figures. The counters on this class are cumulative for the run; the
+                // ledger wants what this beat cost, so everything is measured as a difference.
+                var beatStarted = DateTimeOffset.UtcNow;
+                var beforeChars = Interlocked.Read(ref _promptChars);
+                var beforeTokens = Interlocked.Read(ref _promptTokens);
+                var beforeCached = Interlocked.Read(ref _cachedTokens);
+                var beatSettled = 0;
+                var beatIgnored = 0;
+                var beatConverged = 0;
+                var beatLapsed = 0;
+
                 // 1. every open scene gets an open round. Short and under the gate, because the
                 //    HTTP surface can open or close a scene at any moment.
                 await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -208,8 +248,11 @@ public sealed class RoundLoop
 
                 Say($"第 {_beats} 拍：{scenes.Length} 幕各开一轮");
 
-                // 2. asking runs in parallel, across scenes as well as within them.
-                await Task.WhenAll(scenes.Select(s => AskSceneAsync(s, ct))).ConfigureAwait(false);
+                // 2. asking runs in parallel, across scenes as well as within them. Only seats with
+                //    a reason to speak are consulted, so this is nowhere near one call per seat.
+                var perScene = await Task.WhenAll(scenes.Select(s => AskSceneAsync(s, ct))).ConfigureAwait(false);
+                var beatAsked = perScene.Sum(x => x.Asked);
+                var beatQuiet = perScene.Sum(x => x.Quiet);
 
                 // 3. only the scene the human is sitting in can hold the beat.
                 if (!await HoldForUserAsync(ct).ConfigureAwait(false)) return;
@@ -232,6 +275,8 @@ public sealed class RoundLoop
 
                         _lastResult = result;
                         _lastScene = scene.Id;
+                        beatSettled++;
+                        beatIgnored += result.Ignored.Count;
 
                         var discarded = result.Ignored.Count == 0 ? "" : $"，丢弃 {result.Ignored.Count} 条";
                         Say($"{scene.Id} 第 {result.Round} 轮结算（{round.Orders.Count} 条行动{discarded}）");
@@ -249,10 +294,36 @@ public sealed class RoundLoop
                         // honest way to say "everyone walked off".
                         foreach (var id in scene.Cast.Active.ToArray()) scene.Cast.Leave(id);
                     }
+                    beatConverged = converged.Count;
+
+                    // Requests age once per beat, not once per scene: a plea does not get three
+                    // rounds from every open window. And what nobody came for is worth saying
+                    // out loud -- "nobody answered" is a thing that happened to somebody.
+                    beatLapsed = Pleas.Expire(_world);
+                    if (beatLapsed > 0) Say($"{beatLapsed} 条请求没人应，作废了");
 
                     _store.Save(_world);
                 }
                 finally { _gate.Release(); }
+
+                // 5. the ledger row. Written after the save, so a row never describes a beat whose
+                //    effects were lost.
+                _runs?.Append(new BeatRecord
+                {
+                    Beat = _beats,
+                    Scenes = scenes.Length,
+                    Asked = beatAsked,
+                    Quiet = beatQuiet,
+                    PeakInFlight = Volatile.Read(ref _peakInFlight),
+                    PromptChars = Interlocked.Read(ref _promptChars) - beforeChars,
+                    PromptTokens = Interlocked.Read(ref _promptTokens) - beforeTokens,
+                    CachedTokens = Interlocked.Read(ref _cachedTokens) - beforeCached,
+                    Settled = beatSettled,
+                    Converged = beatConverged,
+                    Ignored = beatIgnored,
+                    Lapsed = beatLapsed,
+                    ElapsedMs = (long)(DateTimeOffset.UtcNow - beatStarted).TotalMilliseconds
+                });
 
                 if (_world.Scenes.All(s => !s.Open))
                 {
@@ -275,14 +346,15 @@ public sealed class RoundLoop
         }
     }
 
-    /// <summary>Asks every driven, non-human seat of one scene, all at once.</summary>
-    private async Task AskSceneAsync(Scene scene, CancellationToken ct)
+    /// <summary>Asks the seats of one scene that have a reason to speak, and says how many did not.</summary>
+    private async Task<(int Asked, int Quiet)> AskSceneAsync(Scene scene, CancellationToken ct)
     {
         var round = scene.CurrentRound;
-        if (round is null || round.Closed) return;
+        if (round is null || round.Closed) return (0, 0);
 
         var asks = new List<Task>();
         var asked = 0;
+        var quiet = 0;
 
         foreach (var id in scene.Cast.Active)
         {
@@ -294,12 +366,88 @@ public sealed class RoundLoop
             var declared = round.Orders.Where(o => o.ActorId == id).ToList();
             if (declared.Sum(o => o.Cost) >= scene.OrdersPerActor) continue;
 
+            if (!NeedsToSpeak(scene, round, character)) { quiet++; continue; }
+
             asked++;
             asks.Add(AskOneAsync(scene, round, character, driver, declared, ct));
         }
 
-        if (asked > 0) Say($"{scene.Id} 第 {round.Number} 轮向 {asked} 位问了话");
-        if (asks.Count > 0) await Task.WhenAll(asks).ConfigureAwait(false);
+        // Nobody had a reason: the pointer holder still gets asked, so a beat never passes in
+        // which nothing at all could happen. One voice is enough to keep a story moving.
+        if (asked == 0 && scene.Cast.Count > 0)
+        {
+            var nudgeId = scene.Cast.Active[scene.TurnPointer % scene.Cast.Count];
+            if (_drivers.TryGetValue(nudgeId, out var fallback) && _world.Find(nudgeId) is { IsPlayer: false } who)
+            {
+                asked++;
+                quiet = Math.Max(0, quiet - 1);
+                asks.Add(AskOneAsync(scene, round, who, fallback,
+                    round.Orders.Where(o => o.ActorId == nudgeId).ToList(), ct));
+            }
+        }
+
+        if (asked > 0 || quiet > 0)
+            Say($"{scene.Id} 第 {round.Number} 轮向 {asked} 位问了话"
+                + (quiet > 0 ? $"，{quiet} 位没有开口的理由" : ""));
+
+        if (asks.Count == 0) return (asked, quiet);
+
+        // One scene's asking cannot hold the whole beat forever. Past the budget the rest are
+        // treated as silent: slow is not the same thing as broken, and a round that never ends
+        // stops every other scene along with this one.
+        var all = Task.WhenAll(asks);
+        var budget = Task.Delay(_options.RoundBudgetMs, ct);
+        var first = await Task.WhenAny(all, budget).ConfigureAwait(false);
+        if (first == budget)
+            Say($"{scene.Id} 这一轮问话超过 {_options.RoundBudgetMs} 毫秒，没答完的按沉默算");
+
+        return (asked, quiet);
+    }
+
+    /// <summary>
+    /// Whether this seat needs a turn at all this round.
+    ///
+    /// The one who sits in a seat is an agent, not a model -- and an agent with nothing to answer
+    /// and nobody addressing it does not need to be consulted. Asking anyway is exactly how
+    /// sixty-four seats becomes sixty-four inferences per round, which is the difference between
+    /// a theatre and a render farm. A quiet person is not an idle resource; they are a person
+    /// with nothing to say just now.
+    ///
+    /// The rules are deliberately plain. They decide how much of the house speaks at once, and a
+    /// clever rule here would be a clever bug.
+    /// </summary>
+    private bool NeedsToSpeak(Scene scene, Round round, Character who)
+    {
+        // The first round is the only one where everyone has to be asked, or nothing starts.
+        if (round.Number <= 1) return true;
+
+        // Somebody spoke to them.
+        if (scene.History.TakeLast(24).Any(t => t.AddressedTo == who.Id && t.ActorId != who.Id))
+            return true;
+
+        // They asked for something and are still waiting on an answer.
+        if (Pleas.By(_world, who.Id).Any(p => p.State == PleaState.Open)) return true;
+
+        // Somebody else is stuck in a way this person could answer.
+        if (Pleas.OpenFor(_world, who.Id).Count > 0) return true;
+
+        // It is their turn by the pointer.
+        if (scene.Cast.Count > 0 && scene.Cast.Active[scene.TurnPointer % scene.Cast.Count] == who.Id)
+            return true;
+
+        return false;
+    }
+
+    /// <summary>Lifts the high-water mark. Reading it back later is how a full house gets sized.</summary>
+    private void NotePeak(int now)
+    {
+        var seen = Volatile.Read(ref _peakInFlight);
+        while (now > seen)
+        {
+            var prev = Interlocked.CompareExchange(ref _peakInFlight, now, seen);
+            if (prev == seen) return;
+            seen = prev;
+        }
     }
 
     /// <summary>Settles a round into memories, then reports how much is left in each head.</summary>
@@ -364,10 +512,20 @@ public sealed class RoundLoop
             Recent = RecentFor(scene, character.Id),
             Peers = peers,
             AlreadyDeclared = declared,
-            Memories = _memories.Recall(character.Id, style.Recall)
+            Memories = _memories.Recall(character.Id, style.Recall),
+            OpenPleas = Pleas.OpenFor(_world, character.Id),
+            OwnPleas = Pleas.By(_world, character.Id).Where(p => p.State == PleaState.Open).ToList()
         };
 
-        var outcome = await driver.DriveAsync(ctx, ct).ConfigureAwait(false);
+        DriverOutcome outcome;
+        await _inFlight.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            NotePeak(Interlocked.Increment(ref _inFlightNow));
+            try { outcome = await driver.DriveAsync(ctx, ct).ConfigureAwait(false); }
+            finally { Interlocked.Decrement(ref _inFlightNow); }
+        }
+        finally { _inFlight.Release(); }
 
         Interlocked.Add(ref _promptChars, outcome.PromptChars);
         if (outcome.PromptTokens is { } billedTotal) Interlocked.Add(ref _promptTokens, billedTotal);

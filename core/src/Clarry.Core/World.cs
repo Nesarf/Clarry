@@ -36,6 +36,11 @@ public sealed class World
     public World()
     {
         Scenes.Add(new Scene { Id = "scene-1", Number = 1 });
+
+        // One place to ask, so a world is usable before anyone builds a shrine: a step in the
+        // courtyard, and the god over it is said to look after lost things and the way home.
+        Deities.Add(ShrineRules.DefaultDeity());
+        Shrines.Add(ShrineRules.DefaultShrine());
     }
 
     public required string Id { get; init; }
@@ -138,19 +143,23 @@ public sealed class World
     // --- wishes and activities live on the world, not the scene --------------------------
 
     /// <summary>
-    /// The audience's wishes for this scene. Three is enough to matter and few enough that
-    /// every one of them is a decision; once they run out, watching is all that is left.
+    /// The audience's wishes for this scene. Two is the whole budget now, not three: the list
+    /// lost three of its four interventions, and what is left is heavier than what went away.
+    /// Answering somebody's request is worth more than arranging an encounter ever was.
     /// </summary>
-    public int WishBudget { get; set; } = 3;
-    public int WishesLeft { get; set; } = 3;
+    public int WishBudget { get; set; } = 2;
+    public int WishesLeft { get; set; } = 2;
 
     /// <summary>What the audience already asked for, so it can see what actually changed.</summary>
     public List<Wish> Wishes { get; } = new();
 
-    /// <summary>A paid-for encounter: these two share the next scene, warmth or not.</summary>
+    /// <summary>
+    /// A forced encounter: these two share the next scene, warmth or not. No wish writes this
+    /// any more -- the audience no longer decides who meets whom -- but the picker still honours
+    /// it, because a script or a test may want to stage something specific.
+    /// </summary>
     public string? ForcedPairA { get; set; }
     public string? ForcedPairB { get; set; }
-
     /// <summary>
     /// Activities the characters invented for themselves. The world records the rules, the
     /// moves and the verdict; it never interprets any of them. This is the extension point
@@ -164,6 +173,21 @@ public sealed class World
     /// of it, and it is still there tomorrow.
     /// </summary>
     public List<Venue> Venues { get; } = new();
+
+    /// <summary>
+    /// Things people have asked the world for and are still waiting on. A request outlives the
+    /// round it was made in and is not tied to one scene, so it lives here rather than on a Scene.
+    /// </summary>
+    public List<Plea> Pleas { get; } = new();
+
+    /// <summary>Monotonic, so a request keeps its id even after older ones are dropped.</summary>
+    public int NextPleaNumber { get; set; } = 1;
+
+    /// <summary>Places where a request can be left. Most worlds need one.</summary>
+    public List<Shrine> Shrines { get; } = new();
+
+    /// <summary>Whatever is said to answer at those places. Nobody has ever seen one.</summary>
+    public List<Deity> Deities { get; } = new();
 
     // --- scenes ---------------------------------------------------------------------------
 
