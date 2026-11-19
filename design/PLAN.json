@@ -236,14 +236,26 @@
     },
     {
       "id": "fourth-wall",
-      "title": "极低概率的察觉：某一次结算里，一个 agent 察觉到自己被看着。一次性、不可重复、不可证实、不可利用；察觉之后它只能说出来，世界不承认任何东西。待定，先不做",
-      "status": "todo",
+      "title": "极低概率的察觉：某一次结算里，一个 agent 察觉到自己被看着。一次性、不可重复、不可证实、不可利用；察觉之后它只能说出来，世界不承认任何东西",
+      "status": "done",
       "after": [
         "shrine"
       ],
-      "touches": [],
-      "verifiedBy": [],
-      "notes": "还没开工，所以不碰任何文件。真做的时候要新增 core/src/Clarry.Core/Glitch.cs（此刻不存在），加进 touches 才能算数。"
+      "touches": [
+        "core/src/Clarry.Core/Glitch.cs",
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Core/WorldStore.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Server/RoundLoop.cs",
+        "core/src/Clarry.Server/ClarryOptions.cs",
+        "core/src/Clarry.Server/Endpoints/WorldEndpoints.cs",
+        "core/src/Clarry.Server/Endpoints/DriverEndpoints.cs",
+        "scripts/test-glimpse.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/test-glimpse.ps1"
+      ],
+      "notes": "每两千轮每人一次，用确定性种子（世界＋人＋轮次），所以重放同一个存档会重放同一段沉默。只在真的被问话时抽——没人问的席位不是有感觉的席位。那一段写成感觉而不是事实：没有东西可查，屋里别人不会有，说出口之后世界照旧。最后两句是设计的全部——可以说，也可以不说，不说同样是一个回答。记录里没有「谁在看」这一栏，不是遗漏，是屋里没有人能知道。抽样在锁里做，因为四路并发下「有没有察觉过」和「刚察觉了」必须是同一步，否则她会察觉两次。判据跑出来是这样：把事件摆到晴光面前，她选了沉默——「那阵被从外面看过来的感觉，她只把视线在房间里绕了半圈，随即收回，什么都没说」，然后推窗、理袖、坐直，四轮里再没提过。验收走 /api/glimpses/force，它和巧合走同一道门（交付前 ToldAt 为空），所以捷径造不出另一种事件。"
     },
     {
       "id": "world-scenes",
@@ -790,6 +802,23 @@
         "scripts/scene-kivotos.ps1"
       ],
       "notes": "verifiedBy 记的是那条能复现的路，不是免费判据——它要 DEEPSEEK_API_KEY，会真的花钱。改这一条时跑它才知道还对不对。世界设定用的是官方的骨架，角色卡从四份设定文件里压出来，压的标准只有一条：留下的每一栏都要能被演出来。卡里不出现 agent、玩家、观众，也不出现那个称呼——设定里挂在某个人身上的篇幅换成了「一个方向」「某个人」，这是第四面墙在角色卡这一层的落地。顺带修了 /api/history：幕一收，活动幕就是新的空幕，原来的实现在这时候返回空列表，等于告诉读的人什么都没发生过。"
+    },
+    {
+      "id": "art-kivotos",
+      "title": "四张同人立绘入册：白底泛洪剔背、像素化、接进舞台",
+      "status": "done",
+      "after": [
+        "art-portraits"
+      ],
+      "touches": [
+        "assets/portraits/harumi.png",
+        "assets/portraits/hisagi.png",
+        "assets/portraits/komae.png",
+        "assets/portraits/mikoto.png",
+        "scripts/pixelize.py"
+      ],
+      "verifiedBy": [],
+      "notes": "原图是 webp 与 jpeg 却顶着 .png 的名字，直接复制会让字节与扩展名不一致，而舞台按扩展名发 content-type——含 webp 的 png 是浏览器拒绝画的那种立绘，所以先解码再存 PNG。剔底第一版按「亮且无色」全局判，把白发白裙白袖一起挖穿了；改成从四角泛洪之后，只有能从外面走到的白才被剔，被轮廓围住的白留在人物身上。像素化参数 96 格、24 色、放大 8 倍，四张各约 40 KB。HTTP 验过 200 与 image/png。"
     }
   ],
   "title": "Clarry — Agent 戏剧平台"

@@ -17,7 +17,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageEnhance
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance
 
 try:
     BOX = Image.Resampling.BOX
@@ -57,12 +57,38 @@ def cut_background(im: Image.Image, brightness: int, neutrality: int) -> Image.I
     return Image.composite(clear, im, backdrop)
 
 
+def cut_white(im: Image.Image, thresh: int) -> Image.Image:
+    """Cut the white that is reachable from the border, and only that.
+
+    The first version of this tested every pixel against "bright and colourless", and it ate
+    the figure: this cast has white hair, a white dress, white sleeves and white socks, and a
+    global rule punches through all of them. A backdrop is not white *anywhere*, it is white
+    *around the outside* -- so the cut is a flood from the four corners and white enclosed by
+    an outline survives.
+
+    Threshold rather than a hard rule because the source is lossy: JPEG leaves the backdrop
+    sitting a few points either side of pure white.
+    """
+    out = im.convert("RGBA").copy()
+    w, h = out.size
+    for xy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        try:
+            ImageDraw.floodfill(out, xy, (0, 0, 0, 0), thresh=thresh)
+        except Exception:
+            # A corner that is already fully transparent needs no flood; nothing to report.
+            pass
+    return out
+
+
 def pixelize(path: Path, out_dir: Path | None, width: int, colors: int, scale: int,
              key_black: int, suffix: str, saturate: float, contrast: float,
-             cut_bg: tuple[int, int] | None) -> Path:
+             cut_bg: tuple[int, int] | None,
+             cut_white_bg: int | None = None) -> Path:
     im = Image.open(path).convert("RGBA")
     if cut_bg is not None:
         im = cut_background(im, cut_bg[0], cut_bg[1])
+    if cut_white_bg is not None:
+        im = cut_white(im, cut_white_bg)
 
     src_w, src_h = im.size
     height = max(1, round(src_h * width / src_w))
@@ -112,6 +138,10 @@ def main(argv: list[str]) -> int:
                     help="cut the backdrop: a pixel counts as background when its "
                          "brightest channel is under BRIGHT and its channel spread is at "
                          "most FLAT, e.g. 55:18 (omit to keep the backdrop)")
+    ap.add_argument("--cut-white", type=int, default=None, metavar="THRESH",
+                    help="cut a white studio backdrop: floods in from the four corners with "
+                         "this colour tolerance, so white enclosed by an outline survives "
+                         "(e.g. 24; omit to keep the backdrop)")
     ap.add_argument("--saturate", type=float, default=1.0,
                     help="colour boost applied before the palette is cut (default 1.0)")
     ap.add_argument("--contrast", type=float, default=1.0,
@@ -127,6 +157,8 @@ def main(argv: list[str]) -> int:
         except ValueError:
             ap.error("--cut-bg expects BRIGHT:FLAT, e.g. 55:18")
 
+    cut_white = args.cut_white
+
     out_dir = Path(args.out_dir) if args.out_dir else None
     failures = 0
     for raw in args.inputs:
@@ -138,7 +170,7 @@ def main(argv: list[str]) -> int:
         try:
             pixelize(path, out_dir, args.width, args.colors, args.scale,
                      args.key_black, args.suffix, args.saturate, args.contrast,
-                     cut_bg)
+                     cut_bg, cut_white)
         except Exception as exc:  # keep going: one bad file must not stop a batch
             print(f"  失败 {path.name}：{type(exc).__name__}：{exc}", file=sys.stderr)
             failures += 1
