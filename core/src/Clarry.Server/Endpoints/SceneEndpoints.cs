@@ -106,7 +106,7 @@ internal static class SceneEndpoints
             finally { ctx.Gate.Release(); }
         });
 
-        // A new scene clears the history, the round ledger and the clue progress. The cast stays:
+        // A new play clears the history, the round ledger and the clue progress. The cast stays:
         // characters keep whatever state the last play left them in.
         app.MapPost("/api/scene/new", async (int? clueGoal) =>
         {
@@ -123,6 +123,48 @@ internal static class SceneEndpoints
                     stage = ctx.World.Stage.Active,
                     turns = ctx.World.History.Count,
                     rounds = ctx.World.Rounds.Count
+                });
+            }
+            finally { ctx.Gate.Release(); }
+        });
+
+        // The other half of the same idea, and deliberately not the default: a new scene keeps
+        // the people, a wiped world does not. Everything anyone did here is gone afterwards,
+        // including who they were. The shrine, the gods and the sky stay, because those are the
+        // place rather than the residents -- and a world with nowhere to leave a request would
+        // not be emptied, it would be broken.
+        //
+        // Nothing in the acceptance suites calls this. Wiping is something a person decides,
+        // not something a suite does on the way past.
+        app.MapPost("/api/world/wipe", async () =>
+        {
+            if (ctx.Loop.Running) return Results.Conflict(new { error = "循环正在跑，先收场再清空" });
+            await ctx.Gate.WaitAsync();
+            try
+            {
+                var cleared = new
+                {
+                    characters = ctx.World.Registry.Count,
+                    scenes = ctx.World.Scenes.Count,
+                    turns = ctx.World.History.Count,
+                    pleas = ctx.World.Pleas.Count,
+                    venues = ctx.World.Venues.Count
+                };
+                ctx.World.Wipe();
+                ctx.Persist();
+                return Results.Ok(new
+                {
+                    wiped = true,
+                    cleared,
+                    left = new
+                    {
+                        characters = ctx.World.Registry.Count,
+                        scenes = ctx.World.Scenes.Count,
+                        active = ctx.World.Active.Id,
+                        shrines = ctx.World.Shrines.Count,
+                        deities = ctx.World.Deities.Count,
+                        wishes = ctx.World.WishesLeft
+                    }
                 });
             }
             finally { ctx.Gate.Release(); }

@@ -36,9 +36,17 @@ public sealed class World
     public World()
     {
         Scenes.Add(new Scene { Id = "scene-1", Number = 1 });
+        SeedPlace();
+    }
 
-        // One place to ask, so a world is usable before anyone builds a shrine: a step in the
-        // courtyard, and the god over it is said to look after lost things and the way home.
+    /// <summary>
+    /// The minimum a world needs before anyone has built anything: one place to leave a request,
+    /// and the god said to answer there. Kept in one method because it is used twice -- once when
+    /// a world is born, and once when it is wiped back to the same condition. A shrine somebody
+    /// raised is a resident's act and does not survive a wipe; this one is the place itself.
+    /// </summary>
+    private void SeedPlace()
+    {
         Deities.Add(ShrineRules.DefaultDeity());
         Shrines.Add(ShrineRules.DefaultShrine());
     }
@@ -302,5 +310,50 @@ public sealed class World
         // A new play starts on no camera in particular. Leaving a pin behind would point the
         // audience at a scene that no longer exists and call it a decision.
         FocusScene = null;
+    }
+
+    /// <summary>
+    /// Takes the world back to before anyone arrived: nobody registered, no history, no requests
+    /// waiting on an answer, no shops, no wishes spent. What stays is the place itself -- the sky
+    /// above it, the name it was given, and the one step in the courtyard with the god over it --
+    /// because none of those are things a resident did, while a shrine somebody raised is.
+    ///
+    /// The scene list is emptied and then given one fresh scene rather than left empty. A world
+    /// with no scene is not a world at rest, it is a bug, and <see cref="Active"/> would quietly
+    /// create one on the next read anyway -- with a number derived from a list that says zero
+    /// while the file says five hundred.
+    ///
+    /// Faces and shots go with the people: they describe the last settled round, and there is
+    /// no last round to describe.
+    /// </summary>
+    public void Wipe()
+    {
+        Registry.Clear();
+        Faces.Clear();
+        Shots.Clear();
+
+        Scenes.Clear();
+        Scenes.Add(new Scene { Id = NextSceneId(), Number = 1 });
+
+        Pleas.Clear();
+        NextPleaNumber = 1;
+        Wishes.Clear();
+        WishesLeft = WishBudget;
+        Activities.Clear();
+        Venues.Clear();
+
+        // The place goes back to how it was found: one step in the courtyard and the god over
+        // it. Sixteen shrines with nobody who built them reads as history that never happened.
+        Shrines.Clear();
+        Deities.Clear();
+        SeedPlace();
+
+        ForcedPairA = null;
+        ForcedPairB = null;
+        FocusScene = null;
+
+        // Dice are a policy the characters switch on for themselves. Nobody has done anything
+        // here yet, so there is nothing to have chosen them.
+        Dice.Enabled = false;
     }
 }
