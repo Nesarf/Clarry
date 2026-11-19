@@ -46,6 +46,21 @@ curl http://127.0.0.1:3090/api/world
 
 七十六条路由，除了 `/`、`/stage` 和 `/api/save`，其余都在 `core/src/Clarry.Server/Endpoints/` 的十一个组里，一个组一个文件。想让它自己动起来，得接一个能应答 HTTP 的模型端点：`/api/driver/attach` 挂上驱动器，`/api/loop/start` 之后它自己一拍一拍往下走。
 
+## Unity 舞台
+
+`unity/ClarryStage` 是第二个客户端，只画不判。它读 `/api/cast` 与 `/api/history`，把台上每个人的立绘与最后十句台词摆出来，每 1.5 秒问一次。
+
+**哪一张画用哪一张由服务端算。** 服务端给的是候选链（特写、线稿、像素表情、常态），客户端只把 `face` 字段那一条下载下来。分镜逻辑各写一份之后，每改一次镜头就要改两处。
+
+打开方式：Unity Hub 里添加 `unity/ClarryStage`，打开，按 Play。工程里**没有场景文件**——整个舞台由 `StageBootstrap` 在运行时搭出来，所以第一次打开不需要有人先摆 Canvas 或 Prefab。这也是这个目录能完整留在版本控制里的原因：没有二进制场景资产。
+
+它和浏览器舞台可以同时开着，互不打扰。想要真跑起来的人，先 `& .\scripts\scene-kivotos.ps1 -NoRun` 把四个人放上台。
+
+两件事值得先知道：
+
+- 它用 `Font.CreateDynamicFontFromOSFont` 取系统字体。Unity 内置字体没有汉字，不这么做的话满屏方块。
+- 它不共享 `Clarry.Core` 的模型类。那边是 C# 13（`required`、`file` 命名空间），Unity 2022.3 停在 C# 9，所以 `Assets/Scripts/ClarryApi.cs` 里那些 DTO 是抄的，字段名就是 JSON 的字段名。
+
 ## 改完怎么确认没坏
 
 ```powershell

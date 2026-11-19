@@ -31,16 +31,17 @@ assets/portraits/*_0[0-9][0-9].png
 assets/portraits/*_0[0-9][0-9]_px.png
 assets/portraits/*_0[0-9][0-9]_sprite.png
 
-# Unity：Library 一样能重建，而且动辄十几 G
-unity/Library/
-unity/Temp/
-unity/Obj/
-unity/Build/
-unity/Builds/
-unity/Logs/
-unity/UserSettings/
-unity/*.csproj
-unity/*.sln
+# Unity：Library 一样能重建，而且动辄十几 G。
+# 用 ** 而不是写死一层，因为工程在 unity/<工程名>/ 下，而 Library 在工程里面。
+unity/**/Library/
+unity/**/Temp/
+unity/**/Obj/
+unity/**/Build/
+unity/**/Builds/
+unity/**/Logs/
+unity/**/UserSettings/
+unity/**/*.csproj
+unity/**/*.sln
 
 # 本地依赖与缓存
 node_modules/
