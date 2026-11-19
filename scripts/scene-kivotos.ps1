@@ -21,6 +21,7 @@ param(
     [int]$Rounds = 5,
     [int]$IntervalMs = 400,
     [switch]$NoRun,
+    [string]$Glimpse = '',
     [string]$Base = 'http://127.0.0.1:3090'
 )
 
@@ -177,6 +178,15 @@ foreach ($c in $cast) {
         timeoutMs   = 180000
     }
     Write-Host ("  {0} -> {1}" -f $c.id, $r.kind)
+}
+
+# 那件一生只有一次的事。放进来的原因是它验不了别的：跑一万轮也未必撞上，而想看清楚
+# 它读起来是什么样子，就只能把它摆到某个人面前。第一轮每个人都会被问到，所以这一个人
+# 会在第一轮读到那一段，其余三个人不会。
+if ($Glimpse) {
+    Write-Host '=== 把事件摆到一个人面前' -ForegroundColor Cyan
+    $f = Post-J '/api/glimpses/force' @{ id = $Glimpse }
+    Write-Host ("  {0}（{1}）" -f $f.forced, $f.scene)
 }
 
 Write-Host ("=== 开跑：最多 {0} 轮，间隔 {1} 毫秒" -f $Rounds, $IntervalMs) -ForegroundColor Cyan

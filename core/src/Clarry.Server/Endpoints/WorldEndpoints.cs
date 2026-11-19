@@ -128,6 +128,63 @@ internal static class WorldEndpoints
                         names = c.Attributes.Names
                     }
                 })));
+        // Who has ever caught themselves being watched, and what they said about it.
+        //
+        // Short on purpose. Most worlds answer with an empty list, and a long run answers with
+        // two or three entries; a richer shape would suggest there is more to see, and there
+        // never is. Nothing here says who was watching, because nobody in the house can know.
+        app.MapGet("/api/glimpses", () => Results.Ok(new
+        {
+            count = ctx.World.Glimpses.Count,
+            seen = ctx.World.Glimpses.Values
+                .OrderBy(g => g.At)
+                .Select(g => new
+                {
+                    g.CharacterId,
+                    g.SceneId,
+                    g.Round,
+                    g.At,
+                    delivered = g.ToldAt is not null,
+                    g.Said
+                })
+        }));
+
+        // Puts the event in front of one person on their next turn. This exists for the
+        // acceptance suite and for anyone who wants to watch it happen once -- waiting for a
+        // one-in-two-thousand coincidence is not a test, it is a hope.
+        //
+        // It does not weaken the rule it is standing in for: somebody who has already noticed
+        // cannot be forced again, so the one-shot property survives the shortcut.
+        app.MapPost("/api/glimpses/force", async (EnterRequest r) =>
+        {
+            if (ctx.World.Find(r.Id) is null) return Results.NotFound(new { error = "没有这个角色：" + r.Id });
+            if (ctx.World.Glimpses.ContainsKey(r.Id))
+                return Results.Conflict(new { error = r.Id + " 已经察觉过一次了，不会再有第二次" });
+
+            var scene = ctx.World.Scenes.FirstOrDefault(s => s.Open && s.Cast.Active.Contains(r.Id));
+            if (scene is null) return Results.BadRequest(new { error = r.Id + " 不在任何开着的幕里，没机会停下来" });
+
+            await ctx.Gate.WaitAsync();
+            try
+            {
+                ctx.World.Glimpses[r.Id] = new Glimpse
+                {
+                    CharacterId = r.Id,
+                    SceneId = scene.Id,
+                    Round = scene.CurrentRound?.Number ?? 0
+                };
+                ctx.Persist();
+            }
+            finally { ctx.Gate.Release(); }
+
+            return Results.Ok(new
+            {
+                forced = r.Id,
+                scene = scene.Id,
+                note = "下一轮问到这个人时，他会在自己的 prompt 里读到那一段"
+            });
+        });
+
         // The city's own name, genre and premise. Not anybody's situation and not a scene: this
         // is where the theatre stands, and it is the only thing an outside caller may write here
         // without touching a resident. Every field is optional -- a caller that only wants to

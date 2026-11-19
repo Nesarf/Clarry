@@ -45,6 +45,9 @@ $suites = @(
     'test-board-game'
     'test-expression'
     'test-lineweight'
+    # 排最后，因为它要 wipe 世界才验得了「一开始没有人察觉过」——察觉记录没法单独清，
+    # 而 wipe 是最诚实的方式。代价是它跑完之后世界里只剩它自己摆的那两个人。
+    'test-glimpse'
 )
 
 # test-loop 只打印状态、不下判断，所以它是诊断用的，不算验收的一格。

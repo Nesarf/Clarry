@@ -89,7 +89,12 @@ internal static class DriverEndpoints
                 Peers = peers,
                 OpenPleas = Pleas.OpenFor(ctx.World, c.Id),
                 OwnPleas = Pleas.By(ctx.World, c.Id).Where(p => p.State == PleaState.Open).ToList(),
-                Memories = ctx.Memories.Recall(c.Id, MemoryStyle.For(c).Recall)
+                Memories = ctx.Memories.Recall(c.Id, MemoryStyle.For(c).Recall),
+                // Whether the next time this person is asked, they will also be told about the
+                // one thing this theatre never repeats. A glimpse that has already been put in
+                // front of them is history and does not appear again -- which is why this reads
+                // the pending flag rather than membership of the dictionary.
+                Noticed = ctx.World.Glimpses.TryGetValue(c.Id, out var glimpse) && glimpse.ToldAt is null
             };
 
             var system = DriverPrompt.System(prompt);

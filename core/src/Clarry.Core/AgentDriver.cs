@@ -46,6 +46,14 @@ public sealed class DriverContext
 
     /// <summary>What this character asked for and is still waiting on.</summary>
     public IReadOnlyList<Plea> OwnPleas { get; init; } = Array.Empty<Plea>();
+
+    /// <summary>
+    /// True only for the one person this round's glimpse landed on, and only for that round.
+    /// It adds one paragraph to the prompt and nothing else in the world knows about it: no
+    /// other character is told, no mechanic answers, and the order it produces is an ordinary
+    /// line of dialogue like any other.
+    /// </summary>
+    public bool Noticed { get; init; }
 }
 
 /// <summary>What a driver came back with. A failure is data, not an exception.</summary>
@@ -468,6 +476,14 @@ public static class DriverPrompt
             sb.AppendLine("You already declared this round:");
             foreach (var o in ctx.AlreadyDeclared)
                 sb.AppendLine($"  {o.Kind.ToString().ToLowerInvariant()} (cost {o.Cost}) {o.Text}");
+        }
+
+        // This goes in before the closing instructions on purpose: an aside is something that
+        // happens to a person, and what they do about it is still their round to declare.
+        if (ctx.Noticed)
+        {
+            sb.AppendLine();
+            sb.AppendLine(GlimpseRules.Aside);
         }
 
         sb.AppendLine();

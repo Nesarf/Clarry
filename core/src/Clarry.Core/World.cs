@@ -191,6 +191,15 @@ public sealed class World
     /// <summary>Monotonic, so a request keeps its id even after older ones are dropped.</summary>
     public int NextPleaNumber { get; set; } = 1;
 
+    /// <summary>
+    /// Who has caught themselves being watched, once each, ever. Keyed by character so the
+    /// question "has this happened to her" and the lookup are the same operation -- which is
+    /// also what makes it un-repeatable: an entry here is the whole prohibition.
+    ///
+    /// It survives a save, because a person who has noticed does not un-notice on reload.
+    /// </summary>
+    public Dictionary<string, Glimpse> Glimpses { get; } = new(StringComparer.Ordinal);
+
     /// <summary>Places where a request can be left. Most worlds need one.</summary>
     public List<Shrine> Shrines { get; } = new();
 
@@ -341,6 +350,9 @@ public sealed class World
         WishesLeft = WishBudget;
         Activities.Clear();
         Venues.Clear();
+
+        // A wiped world has nobody who ever noticed anything, because it has nobody at all.
+        Glimpses.Clear();
 
         // The place goes back to how it was found: one step in the courtyard and the god over
         // it. Sixteen shrines with nobody who built them reads as history that never happened.

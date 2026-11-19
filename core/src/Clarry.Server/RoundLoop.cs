@@ -99,6 +99,14 @@ public sealed class RoundLoop
     private int _peakInFlight;
 
     /// <summary>Shared with the HTTP surface so a manual call and a loop tick never interleave.</summary>
+    /// <summary>
+    /// Guards <see cref="World.Glimpses"/>. Four drivers can be in flight at once, and "has this
+    /// ever happened to her" plus "record that it just did" have to be one indivisible step --
+    /// otherwise two concurrent asks could both pass the check and she would notice twice, which
+    /// is the one thing this event is not allowed to do.
+    /// </summary>
+    private readonly object _glimpseLock = new();
+
     private readonly SemaphoreSlim _gate;
 
     private CancellationTokenSource? _cts;
@@ -503,6 +511,43 @@ public sealed class RoundLoop
             .ToList();
 
         var style = MemoryStyle.For(character);
+
+        // The one event in this theatre that does not repeat.
+        //
+        // Rolled here rather than before the fan-out because a glimpse happens to a person who
+        // is being asked something: a seat nobody consulted this round is not a seat where
+        // anything was felt. Rolled under a lock because four drivers can be in flight at once
+        // and Glimpses is an ordinary dictionary -- and because "has this happened to her" and
+        // "record that it happened" have to be the same instant, or two of them could both pass
+        // the check and she would notice twice.
+        var noticed = false;
+        string? glimpseLine = null;
+        lock (_glimpseLock)
+        {
+            if (_world.Glimpses.TryGetValue(character.Id, out var pending) && pending.ToldAt is null)
+            {
+                // Somebody decided this one in advance -- the acceptance suite, or a person who
+                // wanted to watch it happen once. It still goes through this door, so it cannot
+                // produce a different kind of event than the coincidence does.
+                pending.ToldAt = DateTimeOffset.UtcNow;
+                noticed = true;
+                glimpseLine = $"{scene.Id} 里 {character.Id} 忽然停了一下，说不上来是为什么";
+            }
+            else if (GlimpseRules.Strikes(_world, character.Id, round.Number, _options.GlimpseOdds))
+            {
+                _world.Glimpses[character.Id] = new Glimpse
+                {
+                    CharacterId = character.Id,
+                    SceneId = scene.Id,
+                    Round = round.Number,
+                    ToldAt = DateTimeOffset.UtcNow
+                };
+                noticed = true;
+                glimpseLine = $"{scene.Id} 里 {character.Id} 忽然停了一下，说不上来是为什么";
+            }
+        }
+        if (glimpseLine is not null) Say(glimpseLine);
+
         var ctx = new DriverContext
         {
             Self = character,
@@ -514,7 +559,8 @@ public sealed class RoundLoop
             AlreadyDeclared = declared,
             Memories = _memories.Recall(character.Id, style.Recall),
             OpenPleas = Pleas.OpenFor(_world, character.Id),
-            OwnPleas = Pleas.By(_world, character.Id).Where(p => p.State == PleaState.Open).ToList()
+            OwnPleas = Pleas.By(_world, character.Id).Where(p => p.State == PleaState.Open).ToList(),
+            Noticed = noticed
         };
 
         DriverOutcome outcome;

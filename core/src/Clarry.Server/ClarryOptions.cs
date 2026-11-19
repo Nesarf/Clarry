@@ -1,5 +1,7 @@
 namespace Clarry.Server;
 
+using Clarry.Core;
+
 /// <summary>
 /// Every number that used to be scattered through the code, in one place, read once at startup
 /// from the environment. The same binary should be able to be a laptop demo and a sixty-four
@@ -36,6 +38,16 @@ public sealed class ClarryOptions
     /// <summary>How many closed scenes to keep as record before the oldest are trimmed.</summary>
     public int ClosedSceneKeep { get; init; } = 30;
 
+    /// <summary>
+    /// One round in this many, per person, a glimpse lands. Two thousand is deliberately large:
+    /// somebody who plays a hundred rounds still almost certainly never feels it, and that is the
+    /// design rather than a rough edge.
+    ///
+    /// The acceptance suite sets this to 1 through the environment, because waiting for a
+    /// one-in-two-thousand coincidence is not a test, it is a hope.
+    /// </summary>
+    public int GlimpseOdds { get; init; } = GlimpseRules.DefaultOdds;
+
     public static ClarryOptions FromEnvironment()
     {
         static int Read(string name, int fallback)
@@ -51,7 +63,8 @@ public sealed class ClarryOptions
             RoundBudgetMs = Read("CLARRY_ROUND_BUDGET_MS", 300_000),
             BeatIntervalMs = Read("CLARRY_BEAT_INTERVAL_MS", 1_500),
             UserWaitMs = Read("CLARRY_USER_WAIT_MS", 120_000),
-            ClosedSceneKeep = Read("CLARRY_CLOSED_SCENE_KEEP", 30)
+            ClosedSceneKeep = Read("CLARRY_CLOSED_SCENE_KEEP", 30),
+            GlimpseOdds = Read("CLARRY_GLIMPSE_ODDS", GlimpseRules.DefaultOdds)
         };
     }
 

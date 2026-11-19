@@ -55,6 +55,13 @@ public sealed class WorldSnapshot
     public List<Venue> Venues { get; set; } = new();
     public List<Plea> Pleas { get; set; } = new();
     public int NextPleaNumber { get; set; } = 1;
+
+    /// <summary>
+    /// Who has already noticed, once each. Empty in saves written before this existed, which
+    /// reads correctly: nobody in an older world had caught it either.
+    /// </summary>
+    public List<Glimpse> Glimpses { get; set; } = new();
+
     public List<Shrine> Shrines { get; set; } = new();
     public List<Deity> Deities { get; set; } = new();
 
@@ -140,6 +147,7 @@ public sealed class WorldStore
         Venues = world.Venues.ToList(),
         Pleas = world.Pleas.ToList(),
         NextPleaNumber = world.NextPleaNumber,
+        Glimpses = world.Glimpses.Values.ToList(),
         Shrines = world.Shrines.ToList(),
         Deities = world.Deities.ToList(),
         Sky = world.Sky,
@@ -209,6 +217,10 @@ public sealed class WorldStore
         world.Venues.AddRange(snap.Venues);
         world.Pleas.AddRange(snap.Pleas);
         world.NextPleaNumber = Math.Max(snap.NextPleaNumber, world.Pleas.Count + 1);
+
+        // A glimpse is not repeatable, so it is one of the few things that has to survive a
+        // reload intact: a person who has noticed does not un-notice because the server restarted.
+        foreach (var g in snap.Glimpses) world.Glimpses[g.CharacterId] = g;
 
         // The constructor seeds one shrine so a new world is usable at once; a restore replaces
         // that with whatever was saved, and keeps the default when the save predates shrines.
