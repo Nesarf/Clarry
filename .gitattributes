@@ -1,0 +1,32 @@
+# 行尾：仓库里存 LF，检出到工作区也是 LF。
+#
+# 不写这一条时，靠的是 core.autocrlf=true：提交时把 CRLF 转成 LF，检出时再转回 CRLF。
+# 那样能用，但每次 add 都会刷一行 "LF will be replaced by CRLF"，而且同一个人在 Linux
+# 上打开文件看到的是另一种行尾。两边一致之后，磁盘上的字节和仓库里的字节是同一个东西，
+# 行尾这件事就不再出现在 git 的输出里。
+* text=auto eol=lf
+
+# 二进制：明说不要当文本处理。
+# 少了这几行，一个恰好含 0x0D 0x0A 的 png 会在 checkout 时被改写，图像坏掉而 git 不报错。
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ogg  binary
+*.wav  binary
+*.mp3  binary
+*.flac binary
+*.db   binary
+*.dll  binary
+*.exe  binary
+*.pdb  binary
+*.zip  binary
+*.7z   binary
+
+# Unity 与建模工具的格式本身就是二进制容器
+*.asset  binary
+*.unity  binary
+*.prefab binary
+*.fbx    binary
+*.blend  binary
