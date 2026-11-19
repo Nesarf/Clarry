@@ -7,10 +7,10 @@
       "title": "视觉与语气风格定稿（日系幻想 RPG 的质感令牌）",
       "status": "done",
       "after": [],
-      "files": [
+      "touches": [
         "docs/STYLE.md"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "docs-language",
@@ -19,7 +19,7 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "docs/STYLE.md",
         "core/src/Clarry.Core/Order.cs",
         "core/src/Clarry.Core/Round.cs",
@@ -28,7 +28,7 @@
         "core/src/Clarry.Server/Program.cs",
         "stage/index.html"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-loop.ps1",
         "scripts/test-user-gate.ps1"
       ]
@@ -40,10 +40,10 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "docs/STACK.md"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "repo-budget",
@@ -52,12 +52,12 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "docs/REPO.md",
         ".gitignore",
         "scripts/release-size.ps1"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/release-size.ps1"
       ]
     },
@@ -68,11 +68,11 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "docs/AUDIO.md",
         "scripts/audio-master.ps1"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/audio-master.ps1"
       ]
     },
@@ -83,10 +83,10 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "docs/MECHANICS.md"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "time-model",
@@ -95,10 +95,10 @@
       "after": [
         "docs-mechanics"
       ],
-      "files": [
+      "touches": [
         "docs/MECHANICS.md"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "core-domain",
@@ -107,13 +107,13 @@
       "after": [
         "docs-mechanics"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Stage.cs",
         "core/src/Clarry.Core/Character.cs",
         "core/src/Clarry.Core/Attributes.cs",
         "core/src/Clarry.Core/World.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "seat-tier",
@@ -122,11 +122,11 @@
       "after": [
         "core-domain"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Character.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "scene-picker",
@@ -135,11 +135,11 @@
       "after": [
         "core-domain"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/ScenePicker.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-scene-picker.ps1"
       ]
     },
@@ -150,14 +150,14 @@
       "after": [
         "scene-picker"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Wish.cs",
         "core/src/Clarry.Core/World.cs",
         "core/src/Clarry.Core/WorldStore.cs",
         "core/src/Clarry.Core/ScenePicker.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-wish.ps1"
       ]
     },
@@ -168,7 +168,7 @@
       "after": [
         "wish-pool"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Plea.cs",
         "core/src/Clarry.Core/Order.cs",
         "core/src/Clarry.Core/Round.cs",
@@ -178,7 +178,7 @@
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-plea.ps1"
       ]
     },
@@ -189,7 +189,7 @@
       "after": [
         "plea"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Shrine.cs",
         "core/src/Clarry.Core/Plea.cs",
         "core/src/Clarry.Core/World.cs",
@@ -197,7 +197,7 @@
         "core/src/Clarry.Core/AgentDriver.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-shrine.ps1"
       ]
     },
@@ -208,10 +208,10 @@
       "after": [
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/AgentDriver.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-prompt-identity.ps1"
       ]
     },
@@ -223,13 +223,13 @@
         "plea",
         "shrine"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Wish.cs",
         "core/src/Clarry.Core/World.cs",
         "core/src/Clarry.Core/WorldStore.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-wish.ps1"
       ]
     },
@@ -240,10 +240,9 @@
       "after": [
         "shrine"
       ],
-      "files": [
-        "core/src/Clarry.Core/Glitch.cs"
-      ],
-      "tests": []
+      "touches": [],
+      "verifiedBy": [],
+      "notes": "还没开工，所以不碰任何文件。真做的时候要新增 core/src/Clarry.Core/Glitch.cs（此刻不存在），加进 touches 才能算数。"
     },
     {
       "id": "world-scenes",
@@ -254,14 +253,14 @@
         "agent-driver",
         "time-model"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Scene.cs",
         "core/src/Clarry.Core/World.cs",
         "core/src/Clarry.Core/WorldStore.cs",
         "core/src/Clarry.Core/ScenePicker.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-scenes.ps1"
       ]
     },
@@ -273,12 +272,12 @@
         "world-scenes",
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Core/Round.cs",
         "core/src/Clarry.Core/AgentDriver.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-multi-loop.ps1"
       ]
     },
@@ -289,13 +288,13 @@
       "after": [
         "multi-loop"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Server/ClarryOptions.cs",
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Server/Program.cs",
         "core/src/Clarry.Core/AgentDriver.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-load.ps1"
       ]
     },
@@ -306,12 +305,12 @@
       "after": [
         "load-gate"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Server/RunLog.cs",
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-runs.ps1"
       ]
     },
@@ -323,13 +322,13 @@
         "seat-tier",
         "world-scenes"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Venue.cs",
         "core/src/Clarry.Core/World.cs",
         "core/src/Clarry.Core/WorldStore.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-venues.ps1"
       ]
     },
@@ -340,12 +339,12 @@
       "after": [
         "venues"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Shift.cs",
         "core/src/Clarry.Core/Venue.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-shift.ps1"
       ]
     },
@@ -357,7 +356,7 @@
         "world-scenes",
         "wish-pool"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Scene.cs",
         "core/src/Clarry.Core/World.cs",
         "core/src/Clarry.Core/Wish.cs",
@@ -365,7 +364,7 @@
         "core/src/Clarry.Server/Program.cs",
         "stage/index.html"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-audience.ps1"
       ]
     },
@@ -376,11 +375,11 @@
       "after": [
         "core-domain"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Order.cs",
         "core/src/Clarry.Core/Round.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "rules-borrowed",
@@ -390,13 +389,13 @@
         "core-resolver",
         "docs-mechanics"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Attributes.cs",
         "core/src/Clarry.Core/Round.cs",
         "core/src/Clarry.Core/AgentDriver.cs",
         "docs/MECHANICS.md"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-souls.ps1"
       ]
     },
@@ -407,10 +406,10 @@
       "after": [
         "core-domain"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/WorldStore.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "minigame-civlike",
@@ -419,10 +418,10 @@
       "after": [
         "core-resolver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/MiniGame.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "agent-activity",
@@ -431,13 +430,13 @@
       "after": [
         "core-resolver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Activity.cs",
         "core/src/Clarry.Core/Order.cs",
         "core/src/Clarry.Core/Round.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-activity-and-cards.ps1"
       ]
     },
@@ -448,11 +447,11 @@
       "after": [
         "minigame-civlike"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/MiniGame.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-activity-and-cards.ps1"
       ]
     },
@@ -463,11 +462,11 @@
       "after": [
         "minigame-civlike"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/MiniGame.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-address-and-vigil.ps1"
       ]
     },
@@ -479,12 +478,12 @@
         "minigame-cards",
         "world-scenes"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/BoardGame.cs",
         "core/src/Clarry.Core/MiniGame.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-board-game.ps1"
       ]
     },
@@ -497,7 +496,7 @@
         "core-resolver",
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Divination.cs",
         "core/src/Clarry.Core/Character.cs",
         "core/src/Clarry.Core/Order.cs",
@@ -506,7 +505,7 @@
         "core/src/Clarry.Core/WorldStore.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-divination.ps1"
       ]
     },
@@ -517,13 +516,13 @@
       "after": [
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Attributes.cs",
         "core/src/Clarry.Core/Order.cs",
         "core/src/Clarry.Core/AgentDriver.cs",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-address-and-vigil.ps1"
       ]
     },
@@ -535,13 +534,13 @@
         "core-domain",
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Memory.cs",
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Server/Program.cs",
         "docs/MEMORY.md"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-memory.ps1"
       ]
     },
@@ -553,13 +552,13 @@
         "core-resolver",
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/TraitMeter.cs",
         "core/src/Clarry.Core/Character.cs",
         "core/src/Clarry.Core/Round.cs",
         "core/src/Clarry.Core/AgentDriver.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-traits.ps1"
       ]
     },
@@ -572,20 +571,20 @@
         "persistence",
         "minigame-civlike"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "build-script",
       "title": "构建脚本：先停服务再编译（服务会锁 dll）",
       "status": "done",
       "after": [],
-      "files": [
+      "touches": [
         "rebuild.ps1"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "dsh-header-button",
@@ -594,13 +593,13 @@
       "after": [
         "server-api"
       ],
-      "files": [
+      "touches": [
         "src/client/index.js",
         "src/host/index.js",
         "cordis.patch.yml",
         "package.json"
       ],
-      "tests": []
+      "verifiedBy": []
     },
     {
       "id": "agent-driver",
@@ -609,14 +608,14 @@
       "after": [
         "server-api"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/AgentDriver.cs",
         "core/src/Clarry.Core/HttpLlmDriver.cs",
         "core/src/Clarry.Server/RoundLoop.cs",
         "core/src/Clarry.Server/Program.cs",
         "scripts/run-real-scene.ps1"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-loop.ps1"
       ]
     },
@@ -627,10 +626,10 @@
       "after": [
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Server/RoundLoop.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-user-gate.ps1"
       ]
     },
@@ -642,12 +641,12 @@
         "dsh-header-button",
         "agent-driver"
       ],
-      "files": [
+      "touches": [
         "stage/index.html",
         "src/client/index.js",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-user-gate.ps1"
       ]
     },
@@ -658,14 +657,14 @@
       "after": [
         "docs-style"
       ],
-      "files": [
+      "touches": [
         "scripts/pixelize.py",
         "scripts/cast_sheet.py",
         "assets/portraits",
         "stage/index.html",
         "core/src/Clarry.Server/Program.cs"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/cast_sheet.py"
       ]
     },
@@ -676,7 +675,7 @@
       "after": [
         "art-portraits"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Expression.cs",
         "core/src/Clarry.Core/Round.cs",
         "core/src/Clarry.Core/World.cs",
@@ -684,7 +683,7 @@
         "stage/index.html",
         "assets/portraits"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-expression.ps1"
       ]
     },
@@ -696,7 +695,7 @@
         "art-portraits",
         "art-expressions"
       ],
-      "files": [
+      "touches": [
         "core/src/Clarry.Core/Shot.cs",
         "core/src/Clarry.Core/Expression.cs",
         "core/src/Clarry.Core/Round.cs",
@@ -707,7 +706,7 @@
         "docs/ART.md",
         "assets"
       ],
-      "tests": [
+      "verifiedBy": [
         "scripts/test-lineweight.ps1"
       ]
     },
@@ -719,10 +718,10 @@
         "art-portraits",
         "server-api"
       ],
-      "files": [
+      "touches": [
         "unity"
       ],
-      "tests": []
+      "verifiedBy": []
     }
   ],
   "title": "Clarry — Agent 戏剧平台"
