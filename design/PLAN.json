@@ -759,6 +759,37 @@
         "scripts/test-all.ps1"
       ],
       "notes": "没有专门的验收：清空是破坏性且一次性的，写成套件反而会让别人跑验收时被清掉世界。它由 test-all 的夹具顺带验一次——那一步真的调 wipe 再建夹具，端点坏了 22 套会一起倒下。清的时候查出三件：世界里有 549 个幕只 1 个活着、16 个祈愿点只 1 个是默认的，都是测试残留；还有 12 套验收用 bob 却从没建过 bob，那个 bob 一直是上一场演出留下的，所以以前「通过」取决于磁盘上有什么。"
+    },
+    {
+      "id": "parser-multiple-arrays",
+      "title": "解析：模型一口气写几个 JSON 数组时逐个读进来，而不是取最外层的括号对把整个回合读成沉默",
+      "status": "done",
+      "after": [
+        "agent-driver"
+      ],
+      "touches": [
+        "core/src/Clarry.Core/AgentDriver.cs"
+      ],
+      "verifiedBy": [],
+      "notes": "没有验收套件能判它：脚本驱动返回的是规整的单个数组，这条只在真实模型的输出上暴露。判据是一场四人八轮的演出里零次解析失败；修之前那一场有一次，日志写 no parsable order array，而模型写的原文就在旁边，是一个 speak 数组加一个 probe 数组。旧代码取第一个左括号到最后一个右括号，截出来是两个数组拼在一起，反序列化失败，整回合归零——一个写得很好的人被记成了沉默。"
+    },
+    {
+      "id": "world-kivotos",
+      "title": "基沃托斯：世界的名字、类型与前提有了写入口，并用四个同人原创角色实演一场",
+      "status": "done",
+      "after": [
+        "server-api",
+        "identity"
+      ],
+      "touches": [
+        "core/src/Clarry.Server/Endpoints/WorldEndpoints.cs",
+        "core/src/Clarry.Server/Endpoints/SceneEndpoints.cs",
+        "scripts/scene-kivotos.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/scene-kivotos.ps1"
+      ],
+      "notes": "verifiedBy 记的是那条能复现的路，不是免费判据——它要 DEEPSEEK_API_KEY，会真的花钱。改这一条时跑它才知道还对不对。世界设定用的是官方的骨架，角色卡从四份设定文件里压出来，压的标准只有一条：留下的每一栏都要能被演出来。卡里不出现 agent、玩家、观众，也不出现那个称呼——设定里挂在某个人身上的篇幅换成了「一个方向」「某个人」，这是第四面墙在角色卡这一层的落地。顺带修了 /api/history：幕一收，活动幕就是新的空幕，原来的实现在这时候返回空列表，等于告诉读的人什么都没发生过。"
     }
   ],
   "title": "Clarry — Agent 戏剧平台"
