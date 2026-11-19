@@ -55,6 +55,7 @@
       "touches": [
         "docs/REPO.md",
         ".gitignore",
+        ".gitattributes",
         "scripts/release-size.ps1"
       ],
       "verifiedBy": [
@@ -722,6 +723,22 @@
         "unity"
       ],
       "verifiedBy": []
+    },
+    {
+      "id": "repo-entry",
+      "title": "入口与自检：README 写清从零到看见舞台那几步（含克隆到别处要设 CLARRY_ROOT），plan-check 把工程地图的自检搬到本地",
+      "status": "done",
+      "after": [
+        "build-script"
+      ],
+      "touches": [
+        "README.md",
+        "scripts/plan-check.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/plan-check.ps1"
+      ],
+      "notes": "工程地图的键名对齐 mim 之后才看得出缺这一条：README 与 plan-check 一度是孤儿文件，没有任何目标认领它们。"
     }
   ],
   "title": "Clarry — Agent 戏剧平台"
