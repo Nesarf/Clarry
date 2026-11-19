@@ -6,8 +6,11 @@ using Microsoft.AspNetCore.Http;
 
 /// <summary>
 /// The world as seen from outside: what it is, who is on stage, and what the public face of each
-/// seated character looks like. Read-only -- nothing here changes the world, which is why this
-/// was the safest group to move out of Program.cs first.
+/// seated character looks like.
+///
+/// Almost everything here is a read. The one write is the world's own name, genre and premise --
+/// not anybody's situation, and not a scene. A theatre that cannot say what city it stands in has
+/// to leave those fields empty forever, and an empty premise is not neutrality, it is an omission.
 /// </summary>
 internal static class WorldEndpoints
 {
@@ -125,5 +128,33 @@ internal static class WorldEndpoints
                         names = c.Attributes.Names
                     }
                 })));
+        // The city's own name, genre and premise. Not anybody's situation and not a scene: this
+        // is where the theatre stands, and it is the only thing an outside caller may write here
+        // without touching a resident. Every field is optional -- a caller that only wants to
+        // name the city should not have to restate its premise to avoid blanking it.
+        app.MapPost("/api/world", async (WorldMetaRequest r) =>
+        {
+            await ctx.Gate.WaitAsync();
+            try
+            {
+                if (r.Title is not null) ctx.World.Title = r.Title.Trim();
+                if (r.Genre is not null) ctx.World.Genre = r.Genre.Trim();
+                if (r.Premise is not null) ctx.World.Premise = r.Premise.Trim();
+                ctx.Persist();
+                return Results.Ok(new
+                {
+                    ctx.World.Title,
+                    ctx.World.Genre,
+                    ctx.World.Premise
+                });
+            }
+            finally { ctx.Gate.Release(); }
+        });
     }
 }
+
+/// <summary>
+/// What the world is called and what kind of place it is. All three are optional because a
+/// premise is long and a caller fixing a typo in the title should not have to carry it along.
+/// </summary>
+record WorldMetaRequest(string? Title, string? Genre, string? Premise);

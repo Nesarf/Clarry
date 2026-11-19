@@ -269,11 +269,22 @@ internal static class SceneEndpoints
         {
             var n = Math.Clamp(take ?? 50, 1, 500);
 
-            if (scene is null) return Results.Ok(ctx.World.History.TakeLast(n));
+            if (scene is not null)
+            {
+                var named = ctx.World.Scenes.FirstOrDefault(s => s.Id == scene);
+                if (named is null) return Results.NotFound(new { error = "没有这一幕：" + scene });
+                return Results.Ok(named.History.TakeLast(n));
+            }
 
-            var target = ctx.World.Scenes.FirstOrDefault(s => s.Id == scene);
-            if (target is null) return Results.NotFound(new { error = "没有这一幕：" + scene });
-            return Results.Ok(target.History.TakeLast(n));
+            var live = ctx.World.History;
+            if (live.Count > 0) return Results.Ok(live.TakeLast(n));
+
+            // A scene that just ended leaves the active one empty, and the evening somebody
+            // wants to read is exactly the one that just closed. Answering with an empty list
+            // would say "nothing has happened here", which is the one answer that is certainly
+            // false. So fall back to the most recent room that still has lines in it.
+            var last = ctx.World.Scenes.LastOrDefault(s => !s.Open && s.History.Count > 0);
+            return Results.Ok(last is null ? live.TakeLast(n) : last.History.TakeLast(n));
         });
     }
 
