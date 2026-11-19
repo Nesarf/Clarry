@@ -477,7 +477,7 @@ public static class DriverPrompt
     }
 }
 
-/// <summary>Pulls the first JSON array out of whatever a model actually wrote.</summary>
+/// <summary>Pulls the orders out of whatever a model actually wrote.</summary>
 public static class OrderParser
 {
     public static List<OrderDraft> ParseDrafts(string? raw)
@@ -485,23 +485,80 @@ public static class OrderParser
         var drafts = new List<OrderDraft>();
         if (string.IsNullOrWhiteSpace(raw)) return drafts;
 
+        var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // First try the shape the prompt asks for: one array, nothing around it.
         var start = raw.IndexOf('[');
         var end = raw.LastIndexOf(']');
-        if (start < 0 || end <= start) return drafts;
-        var slice = raw[start..(end + 1)];
+        if (start >= 0 && end > start && TryParse(raw[start..(end + 1)], options, drafts))
+            return drafts;
 
+        // Some models answer with several arrays in a row, one per thing they want to do.
+        // Reading only the first array drops half the turn; taking the outermost bracket pair
+        // spans all of them and parses as nothing at all, which drops the whole turn -- and
+        // that is the bug this branch exists for: the model wrote a perfectly good turn and
+        // the theatre recorded a silence. So slice them apart and read each one.
+        drafts.Clear();
+        foreach (var piece in SliceArrays(raw)) TryParse(piece, options, drafts);
+        return drafts;
+    }
+
+    private static bool TryParse(string json, System.Text.Json.JsonSerializerOptions options, List<OrderDraft> into)
+    {
         try
         {
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<List<OrderDraft>>(
-                slice,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (parsed is not null) drafts.AddRange(parsed);
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<List<OrderDraft>>(json, options);
+            if (parsed is null || parsed.Count == 0) return false;
+            into.AddRange(parsed);
+            return true;
         }
         catch (System.Text.Json.JsonException)
         {
-            // A model that wrote broken JSON gets no orders this round; the loop records it.
+            // A model that wrote broken JSON gets no orders from that piece; the loop records it.
+            return false;
         }
-        return drafts;
+    }
+
+    /// <summary>
+    /// Every top-level array in the text, brackets balanced and string literals respected so a
+    /// ']' inside somebody's dialogue does not end a turn early.
+    /// </summary>
+    private static IEnumerable<string> SliceArrays(string raw)
+    {
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+        var open = -1;
+
+        for (var i = 0; i < raw.Length; i++)
+        {
+            var ch = raw[i];
+
+            if (inString)
+            {
+                if (escaped) escaped = false;
+                else if (ch == '\\') escaped = true;
+                else if (ch == '"') inString = false;
+                continue;
+            }
+
+            if (ch == '"') { inString = true; continue; }
+
+            if (ch == '[')
+            {
+                if (depth == 0) open = i;
+                depth++;
+            }
+            else if (ch == ']' && depth > 0)
+            {
+                depth--;
+                if (depth == 0 && open >= 0)
+                {
+                    yield return raw[open..(i + 1)];
+                    open = -1;
+                }
+            }
+        }
     }
 
     public static List<Order> ToOrders(string actorId, IEnumerable<OrderDraft> drafts)
