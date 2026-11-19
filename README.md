@@ -61,6 +61,16 @@ curl http://127.0.0.1:3090/api/world
 - 它用 `Font.CreateDynamicFontFromOSFont` 取系统字体。Unity 内置字体没有汉字，不这么做的话满屏方块。
 - 它不共享 `Clarry.Core` 的模型类。那边是 C# 13（`required`、`file` 命名空间），Unity 2022.3 停在 C# 9，所以 `Assets/Scripts/ClarryApi.cs` 里那些 DTO 是抄的，字段名就是 JSON 的字段名。
 
+## 看这个舞台
+
+下面两条不是给玩家用的，是在这个仓库里核对客户端时的两条路。
+
+**桥** —— `scripts/unity-bridge.ps1 status|play|stop|log|refresh|game`，通过工程根的 `.bridge/in` 与 `.bridge/out` 两个目录跟正在运行的编辑器说话。它存在的原因很具体：这台机器上的 Unity 在 batchmode 下拿不到 headless entitlement，2019 与 2022 两个版本都过不去，所以「从外面启动编辑器」这条路断了。但 GUI 授权是好的，于是换成让已经在跑的那个接命令。Editor 那一侧在 `Assets/Editor/ClarryBridge.cs`。
+
+**读窗口** —— `scripts/unity-window.ps1 -View GameView`，把编辑器窗口从屏幕上抓下来存成 PNG，输出一行 JSON（路径、尺寸、平均亮度）。它抓的是 Windows 合成之后的像素，不依赖 Unity 的任何模块。前提是窗口不能最小化：脚本会替你还原并前置，盖在它上面的窗口则会一起被抓进来。
+
+Unity 自己的两条截图路都不通，理由写在 `ClarryBridge.TryShot` 的注释里：`ScreenCapture.CaptureScreenshot` 排得进却从不落盘，`CaptureScreenshotAsTexture` 要等一帧，而那个协程得放在运行时程序集里，那里没有 screencapture 模块。
+
 ## 改完怎么确认没坏
 
 ```powershell

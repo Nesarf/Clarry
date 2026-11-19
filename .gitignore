@@ -43,6 +43,12 @@ unity/**/UserSettings/
 unity/**/*.csproj
 unity/**/*.sln
 
+# 桥的命令与回执：一次性的对话，不该进版本控制
+unity/**/.bridge/
+
+# 抓下来的窗口截图：用来核对客户端，不是产物
+shots/
+
 # 本地依赖与缓存
 node_modules/
 .cache/

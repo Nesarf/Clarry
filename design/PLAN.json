@@ -725,16 +725,26 @@
     },
     {
       "id": "unity-stage",
-      "title": "Unity 舞台客户端：共享 C# 模型，负责像素角色与 Live2D 表现",
-      "status": "todo",
+      "title": "Unity 舞台客户端：只画不判的第二个客户端，附带一条能在不开 batchmode 的情况下驱动编辑器的桥",
+      "status": "done",
       "after": [
         "art-portraits",
         "server-api"
       ],
       "touches": [
-        "unity"
+        "unity/ClarryStage/Assets/Scripts/ClarryApi.cs",
+        "unity/ClarryStage/Assets/Scripts/StageView.cs",
+        "unity/ClarryStage/Assets/Scripts/StageBootstrap.cs",
+        "unity/ClarryStage/Assets/Editor/ClarryBridge.cs",
+        "unity/ClarryStage/Packages/manifest.json",
+        "unity/ClarryStage/ProjectSettings/ProjectVersion.txt",
+        "scripts/unity-bridge.ps1",
+        "scripts/unity-window.ps1"
       ],
-      "verifiedBy": []
+      "verifiedBy": [
+        "scripts/unity-window.ps1"
+      ],
+      "notes": "原计划写的是「共享 C# 模型」，实际做不到也做不得：Clarry.Core 停在 C# 13（required 成员、file 作用域命名空间），Unity 2022.3 的 C# 9 编译不了；为了抄几个字段把两边绑在同一个编译器版本上，代价比抄一次大。所以 DTO 是抄的，字段名就是 JSON 的字段名。分工选渲染层：哪张画由服务端算，客户端按 face/faces 的候选链逐张试——早一版只读第一项，于是每一个没画的表情都变成 404 和白卡。布局用锚点不用 VerticalLayoutGroup，也是试出来的：关掉 childControlHeight 立绘退回 100×100 的默认框被压成拇指，打开它立绘吃掉全部高度、两行字一个都看不见。桥那条是因为授权：batchmode 拿不到 com.unity.editor.headless，2019 与 2022 都过不去，于是让运行中的编辑器读 .bridge/in 接命令。截图最后没走 Unity，改成从屏幕抓窗口——三条内路都不通，理由写在 TryShot 的注释里。verifiedBy 记的是那条能复现的核对路，不是免费判据：它要把编辑器窗口调到前台。"
     },
     {
       "id": "repo-entry",
