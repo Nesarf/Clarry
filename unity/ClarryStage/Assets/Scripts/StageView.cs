@@ -10,11 +10,14 @@ namespace ClarryStage
     /// 把舞台画出来。它只做两件事：把 /api/cast 的每一个人摆成一张卡，把 /api/history 的
     /// 最后十句排成一条台词流。
     ///
-    /// 有一件事它刻意不做：决定这一格用哪张画。哪张图是服务端算的（特写、线稿、像素表情、
-    /// 常态的候选链），客户端只负责把 face 字段给的那一条下载下来。分镜逻辑在两边各写一份
-    /// 之后，每改一次镜头就要改两处，而那正是这个客户端最容易烂掉的方式。
+    /// 有一件事它刻意不做：决定这一格用哪张画。服务端给的是候选链（这一格专用的、线稿、
+    /// 像素表情、常态），客户端只按顺序试，第一张能加载的就是这一格该用的。它不自己算，
+    /// 因为分镜逻辑各写一份之后，每改一次镜头就要改两处。
     ///
-    /// 轮询就够。拍与拍之间默认 1.5 秒，比它更快的推送不会让人看到更多东西。
+    /// 卡片的布局用锚点，不用 VerticalLayoutGroup。理由是试过两版布局组：关掉
+    /// childControlHeight，立绘退回 100×100 的默认框，被 preserveAspect 压成拇指；
+    /// 打开它，立绘拿走了全部高度，两行字一个字都看不见。锚点没有这类歧义：
+    /// 卡片多高，立绘就是「多高减去底下 74 像素」，剩下的位置本来就是留给字的。
     /// </summary>
     public class StageView : MonoBehaviour
     {
@@ -34,7 +37,7 @@ namespace ClarryStage
             public Image Portrait;
             public Text Name;
             public Text Line;
-            public string Face;
+            public string Want;
         }
 
         void Start()
@@ -136,10 +139,13 @@ namespace ClarryStage
                 card.Name.text = m.name;
                 card.Line.text = m.role ?? "";
 
-                if (card.Face != m.face)
+                // 拿候选链的第一项当「这一格想要什么」的指纹：它变了就说明表情或镜头变了，
+                // 该重新挑图；没变就别重复下载。
+                var want = m.faces != null && m.faces.Length > 0 ? m.faces[0] : m.face;
+                if (card.Want != want)
                 {
-                    card.Face = m.face;
-                    StartCoroutine(LoadPortrait(card, m.face));
+                    card.Want = want;
+                    StartCoroutine(LoadPortrait(card, m.faces, m.face));
                 }
             }
 
@@ -153,29 +159,28 @@ namespace ClarryStage
 
         Card BuildCard()
         {
-            var root = new GameObject("卡", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            var root = new GameObject("卡", typeof(RectTransform), typeof(Image));
             root.transform.SetParent(_row, false);
 
             var bg = root.GetComponent<Image>();
             bg.color = new Color(0.11f, 0.12f, 0.15f, 1f);
             bg.raycastTarget = false;
 
-            var layout = root.GetComponent<VerticalLayoutGroup>();
-            layout.spacing = 6f;
-            layout.padding = new RectOffset(8, 8, 8, 8);
-            layout.childAlignment = TextAnchor.UpperCenter;
-            layout.childControlWidth = true;
-            layout.childControlHeight = false;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-
+            // 立绘撑满卡片上方，底下留 74 像素给两行字。框比图「宽」的时候
+            // preserveAspect 会让图按高度缩并居中，所以不管立绘是什么比例都不会变形。
             var portraitGo = new GameObject("立绘", typeof(RectTransform), typeof(Image));
             portraitGo.transform.SetParent(root.transform, false);
             var portrait = portraitGo.GetComponent<Image>();
             portrait.preserveAspect = true;
             portrait.raycastTarget = false;
-            var portraitLe = portraitGo.AddComponent<LayoutElement>();
-            portraitLe.flexibleHeight = 1f;
+            // 还没有图的时候不要露一个白方块：Image 没有 sprite 会画成纯白，
+            // 而一张白板看起来像「这个人坏了」，不像「图还没到」。
+            portrait.enabled = false;
+            var pr = portraitGo.GetComponent<RectTransform>();
+            pr.anchorMin = new Vector2(0f, 0f);
+            pr.anchorMax = new Vector2(1f, 1f);
+            pr.offsetMin = new Vector2(8f, 74f);
+            pr.offsetMax = new Vector2(-8f, -8f);
 
             var nameGo = new GameObject("名字", typeof(RectTransform));
             nameGo.transform.SetParent(root.transform, false);
@@ -184,10 +189,13 @@ namespace ClarryStage
             nameText.fontSize = 20;
             nameText.color = Color.white;
             nameText.alignment = TextAnchor.MiddleCenter;
+            nameText.horizontalOverflow = HorizontalWrapMode.Overflow;
             nameText.raycastTarget = false;
-            var nameLe = nameGo.AddComponent<LayoutElement>();
-            nameLe.minHeight = 26f;
-            nameLe.preferredHeight = 26f;
+            var nr = nameGo.GetComponent<RectTransform>();
+            nr.anchorMin = new Vector2(0f, 0f);
+            nr.anchorMax = new Vector2(1f, 0f);
+            nr.offsetMin = new Vector2(8f, 44f);
+            nr.offsetMax = new Vector2(-8f, 70f);
 
             var lineGo = new GameObject("身份", typeof(RectTransform));
             lineGo.transform.SetParent(root.transform, false);
@@ -199,28 +207,55 @@ namespace ClarryStage
             lineText.horizontalOverflow = HorizontalWrapMode.Wrap;
             lineText.verticalOverflow = VerticalWrapMode.Truncate;
             lineText.raycastTarget = false;
-            var lineLe = lineGo.AddComponent<LayoutElement>();
-            lineLe.minHeight = 44f;
-            lineLe.preferredHeight = 44f;
+            var lr = lineGo.GetComponent<RectTransform>();
+            lr.anchorMin = new Vector2(0f, 0f);
+            lr.anchorMax = new Vector2(1f, 0f);
+            lr.offsetMin = new Vector2(8f, 2f);
+            lr.offsetMax = new Vector2(-8f, 42f);
 
             return new Card { Root = root, Portrait = portrait, Name = nameText, Line = lineText };
         }
 
-        IEnumerator LoadPortrait(Card card, string path)
+        /// <summary>
+        /// 按服务端给的候选链逐张试，第一张能加载的就是这一格该用的。
+        ///
+        /// 客户端不自己算用哪张，理由就是这个列表：它是从最具体排到一定存在的，一个没有
+        /// 画表情差分的人自然落到常态立绘上。早一版只读列表第一项，于是每一个没画的表情
+        /// 都变成一个 404 和一张白卡。
+        /// </summary>
+        IEnumerator LoadPortrait(Card card, string[] candidates, string fallback)
         {
-            if (_sprites.TryGetValue(path, out var cached))
+            card.Portrait.enabled = false;
+
+            var list = candidates != null && candidates.Length > 0
+                ? candidates
+                : (string.IsNullOrEmpty(fallback) ? new string[0] : new[] { fallback });
+
+            if (list.Length == 0) yield break;
+
+            // 已经下过的那几张先过一遍，不重复走网络。
+            foreach (var path in list)
             {
+                if (!_sprites.TryGetValue(path, out var cached)) continue;
                 card.Portrait.sprite = cached;
+                card.Portrait.enabled = true;
                 yield break;
             }
 
-            Texture2D tex = null;
-            yield return ClarryApi.GetPortrait(path, t => tex = t);
-            if (tex == null) yield break;
+            foreach (var path in list)
+            {
+                Texture2D tex = null;
+                yield return ClarryApi.GetPortrait(path, t => tex = t);
+                if (tex == null) continue;
 
-            var sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0f), 100f);
-            _sprites[path] = sprite;
-            card.Portrait.sprite = sprite;
+                var sprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0f), 100f);
+                _sprites[path] = sprite;
+                card.Portrait.sprite = sprite;
+                card.Portrait.enabled = true;
+                yield break;
+            }
+
+            Debug.LogWarning("[Clarry] " + card.Name.text + " 这一格没有能加载的图，试过：" + string.Join("、", list));
         }
 
         void OnHistory(ClarryApi.Turn[] turns)

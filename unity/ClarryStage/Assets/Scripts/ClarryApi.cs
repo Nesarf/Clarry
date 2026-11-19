@@ -98,7 +98,7 @@ namespace ClarryStage
 
                 if (req.result != UnityWebRequest.Result.Success)
                 {
-                    Debug.LogWarning("Clarry 立绘取不到 " + path + "：" + req.error);
+                    Debug.Log("Clarry 候选图里没有这张，继续试下一张：" + path);
                     done?.Invoke(null);
                     yield break;
                 }
