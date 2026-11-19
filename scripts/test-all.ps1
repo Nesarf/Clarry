@@ -68,6 +68,52 @@ try {
 }
 Write-Host ("  在跑（{0}）" -f $Base) -ForegroundColor Green
 
+# --- 夹具 ---------------------------------------------------------------------------
+# 十二套用 bob，五套用 carol，八套用 alice，但没有一套建它们。这个缺口以前被上一场演出
+# 留下的角色填着，于是「通过」取决于磁盘上有什么——清空世界之后 22 套一起报「没有这个
+# 角色：bob」，把这件事照了出来。
+#
+# 夹具放在这里而不是每一套里：同一个起点，任何一套失败都不必先猜世界是什么状态。
+# 全套跑完世界会被留在夹具状态，这是有意的代价；只跑一套（-Only）时不清空，
+# 只补上缺的那几位，免得为了验一件事把别人正在演的世界抹掉。
+$fixture = @(
+    @{ id = 'alice'; name = '爱丽丝'; role = '剑士' }
+    @{ id = 'bob';   name = '鲍勃';   role = '学者' }
+    @{ id = 'carol'; name = '卡萝尔'; role = '吟游诗人' }
+    @{ id = 'dave';  name = '戴夫';   role = '旅人' }
+)
+
+Write-Host '=== 摆好夹具' -ForegroundColor Cyan
+
+if ($Only.Count -eq 0) {
+    $null = Invoke-RestMethod -Uri "$Base/api/world/wipe" -Method Post -TimeoutSec 60
+    $wanted = @($fixture)
+} else {
+    $tiers = Invoke-RestMethod -Uri "$Base/api/tiers" -Method Get -TimeoutSec 30
+    $have = @($tiers.residents.id) + @($tiers.staff.id)
+    $wanted = @($fixture | Where-Object { $have -notcontains $_.id })
+}
+
+foreach ($c in $wanted) {
+    $body = @{
+        id       = $c.id
+        name     = $c.name
+        isPlayer = $false
+        sheet    = @{
+            role = $c.role; summary = ''; voice = ''
+            traits = @(); goals = @(); fears = @(); secrets = @(); relations = @{}
+        }
+        visual   = @{ kind = 'pixel'; ref = "/assets/portraits/$($c.id).png"; expressions = @() }
+        agent    = @{ kind = 'llm'; autonomy = 'guided' }
+    }
+    $null = Invoke-RestMethod -Uri "$Base/api/character" -Method Post -TimeoutSec 30 `
+        -ContentType 'application/json' -Body ($body | ConvertTo-Json -Depth 8)
+}
+
+$registered = @((Invoke-RestMethod -Uri "$Base/api/tiers" -Method Get -TimeoutSec 30).residents.id)
+Write-Host ("  登记在册：{0}" -f ($registered -join '、')) -ForegroundColor Green
+Write-Host '  谁上台由每一套自己决定，夹具只保证人在' -ForegroundColor DarkGray
+
 # 一套算通过还是没通过。
 #   有「项检查未通过」         → 失败
 #   有行首两空格的「失败」     → 失败

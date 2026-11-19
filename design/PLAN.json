@@ -739,6 +739,26 @@
         "scripts/plan-check.ps1"
       ],
       "notes": "工程地图的键名对齐 mim 之后才看得出缺这一条：README 与 plan-check 一度是孤儿文件，没有任何目标认领它们。"
+    },
+    {
+      "id": "world-wipe",
+      "title": "清空世界：一条端点把世界带回没人来过的样子——角色、幕、请求、场所全部清掉，只留天上那片天、庭前那道石阶与阶上那位神",
+      "status": "done",
+      "after": [
+        "persistence",
+        "server-api"
+      ],
+      "touches": [
+        "core/src/Clarry.Core/World.cs",
+        "core/src/Clarry.Server/Endpoints/SceneEndpoints.cs",
+        "scripts/wipe-world.ps1",
+        "scripts/test-all.ps1",
+        ".gitignore"
+      ],
+      "verifiedBy": [
+        "scripts/test-all.ps1"
+      ],
+      "notes": "没有专门的验收：清空是破坏性且一次性的，写成套件反而会让别人跑验收时被清掉世界。它由 test-all 的夹具顺带验一次——那一步真的调 wipe 再建夹具，端点坏了 22 套会一起倒下。清的时候查出三件：世界里有 549 个幕只 1 个活着、16 个祈愿点只 1 个是默认的，都是测试残留；还有 12 套验收用 bob 却从没建过 bob，那个 bob 一直是上一场演出留下的，所以以前「通过」取决于磁盘上有什么。"
     }
   ],
   "title": "Clarry — Agent 戏剧平台"
