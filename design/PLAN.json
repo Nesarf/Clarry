@@ -830,6 +830,29 @@
       "verifiedBy": [],
       "notes": "原图是 webp 与 jpeg 却顶着 .png 的名字，直接复制会让字节与扩展名不一致，而舞台按扩展名发 content-type——含 webp 的 png 是浏览器拒绝画的那种立绘，所以先解码再存 PNG。剔底第一版按「亮且无色」全局判，把白发白裙白袖一起挖穿了；改成从四角泛洪之后，只有能从外面走到的白才被剔，被轮廓围住的白留在人物身上。像素化参数 96 格、24 色、放大 8 倍，四张各约 40 KB。HTTP 验过 200 与 image/png。"
     }
-  ],
+,
+    {
+      "id": "plea-order",
+      "title": "请求成为一种订单：模型能自己开口，而不是只能由外面的 HTTP 调用替它开口",
+      "status": "done",
+      "after": [
+        "plea",
+        "agent-driver"
+      ],
+      "touches": [
+        "core/src/Clarry.Core/Order.cs",
+        "core/src/Clarry.Core/AgentDriver.cs",
+        "core/src/Clarry.Core/Round.cs",
+        "core/src/Clarry.Server/Endpoints/RoundEndpoints.cs",
+        "core/src/Clarry.Server/Endpoints/PleaEndpoints.cs",
+        "stage/index.html",
+        "scripts/test-plea.ps1",
+        "scripts/scene-kivotos.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/test-plea.ps1"
+      ],
+      "notes": "缺口是查出来的，不是猜的：一场六轮的演出里 hisagi 想应一条请求，日志写「但没有这条请求」。查 OrderKind，八种里没有 Plea——answer 在，它应的那一头对模型不可达，所以三条出路里两条永远等不到东西，请求只能由外面的 HTTP 调用创建。改法：枚举加 Plea（花费 0）、中文名「求助」、订单与草稿各加 blocked 与 needs、prompt 补一段说明（六种缺口，开三轮，三条出路都是真的结局）、结算在应承之前加第 5.955 步开一条 Plea、端点接这两个字段。顺带统一了历史里的 kind：同一种行为过去由端点写 ask、由订单写 plea，stage 会给它两个名字，账本只数得到一半。十轮真演出里零次请求——顺利的戏不需要求助，这是对的，不是失败。真正缺的是「困境如何产生」：现在只有 strain 到 100 会失名，其余时候没有人会卡住，所以这条机制安静。"
+    }  ],
   "title": "Clarry — Agent 戏剧平台"
 }

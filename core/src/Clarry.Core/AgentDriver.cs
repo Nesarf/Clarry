@@ -161,6 +161,12 @@ public sealed class OrderDraft
 
     /// <summary>Optional: which open request this order answers.</summary>
     public string? PleaId { get; set; }
+
+    /// <summary>Optional, on a plea: one of the six shapes of wall.</summary>
+    public string? Blocked { get; set; }
+
+    /// <summary>Optional, on a plea: what would close the gap, in this character's own words.</summary>
+    public string? Needs { get; set; }
 }
 
 /// <summary>
@@ -204,6 +210,11 @@ public static class DriverPrompt
                        "advice" to leave the querent a line they will act on.
           answer   0   answer one open request. put its id in "pleaId". this is a promise, not a
                        transfer: whatever they asked for still has to be handed over separately.
+          plea     0   ask for one specific thing you cannot get alone. "blocked" names the shape
+                       of the wall -- object, skill, person, place, permit, money -- and "needs"
+                       says what would close it, in your own words. It stays open three rounds:
+                       another person may answer it, a shrine may, or nobody may and you go
+                       another way. All three are real endings, and the third is the common one.
 
         Those eight are not the limit of what you can do. When you want to run something they
         cannot express -- a drinking contest, a wager, a race, a trick, a shared ritual --
@@ -596,6 +607,8 @@ public static class OrderParser
                 Tool = ApparatusText.TryParse(d.Tool, out var tool) ? tool : null,
                 Advice = string.IsNullOrWhiteSpace(d.Advice) ? null : d.Advice.Trim(),
                 PleaId = string.IsNullOrWhiteSpace(d.PleaId) ? null : d.PleaId.Trim(),
+                Blocked = BlockedText.TryParse(d.Blocked, out var blocked) ? blocked : null,
+                Needs = string.IsNullOrWhiteSpace(d.Needs) ? null : d.Needs.Trim(),
                 Sequence = seq++
             });
         }

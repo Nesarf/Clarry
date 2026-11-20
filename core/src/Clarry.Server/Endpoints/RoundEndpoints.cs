@@ -59,6 +59,13 @@ internal static class RoundEndpoints
                 if (ctx.World.Find(r.ActorId) is null)
                     return Results.NotFound(new { error = "没有这个角色：" + r.ActorId });
 
+                // A plea carries two fields no other order has: which wall it hit, and what
+                // would close the gap. Parsed here rather than inline because TryParse needs
+                // an out variable, and an out variable cannot live inside an initializer.
+                Blocked? blockedKind = BlockedText.TryParse(r.Blocked, out var parsedBlocked)
+                    ? parsedBlocked
+                    : (Blocked?)null;
+
                 round.Add(new Order
                 {
                     ActorId = r.ActorId,
@@ -69,6 +76,8 @@ internal static class RoundEndpoints
                     // impression is quietly dropped -- both look exactly like working features.
                     PleaId = string.IsNullOrWhiteSpace(r.PleaId) ? null : r.PleaId.Trim(),
                     Impression = string.IsNullOrWhiteSpace(r.Impression) ? null : r.Impression.Trim(),
+                    Needs = string.IsNullOrWhiteSpace(r.Needs) ? null : r.Needs.Trim(),
+                    Blocked = blockedKind,
                     Sequence = round.Orders.Count
                 });
 
@@ -122,4 +131,5 @@ internal static class RoundEndpoints
 }
 
 // --- requests ------------------------------------------------------------------------
-record OrderRequest(string ActorId, OrderKind Kind, string? TargetId, string? Text, string? PleaId, string? Impression);
+record OrderRequest(string ActorId, OrderKind Kind, string? TargetId, string? Text, string? PleaId, string? Impression,
+                    string? Needs = null, string? Blocked = null);

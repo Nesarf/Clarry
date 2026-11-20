@@ -351,6 +351,22 @@ public static class RoundResolver
             if (!outcome.Ok) result.Notes.Add($"{order.ActorId} 想占卜，但{outcome.Reason}");
         }
 
+        // 5.955 asking -- a request is not a mood, it is a thing said out loud with a shape:
+        // what is missing, and what would close the gap. Recording it here is what makes the
+        // other two roads possible. Without this step a resident can only wait to be helped and
+        // never ask, and the whole three-exit design would have exactly one working exit.
+        foreach (var order in accepted.Where(o => o.Kind == OrderKind.Plea))
+        {
+            var actor = world.Find(order.ActorId)!;
+            var blocked = order.Blocked ?? Blocked.Object;
+            var needs = string.IsNullOrWhiteSpace(order.Needs)
+                ? (string.IsNullOrWhiteSpace(order.Text) ? "说了一件想要的事" : order.Text!)
+                : order.Needs!;
+            var plea = Pleas.Open(world, actor, blocked, needs, order.Text ?? "", order.TargetId);
+            result.Revealed.Add($"{order.ActorId} 开了口：{plea.Needs}");
+            result.Notes.Add($"{order.ActorId} 的请求 {plea.Id}（{BlockedText.Of(blocked)}）");
+        }
+
         // 5.96 answering -- a promise, not a transfer. Answering settles the request; whether the
         // thing asked for actually changes hands is a separate give. Both are needed, which is
         // what stops a plea from being solved by words alone.

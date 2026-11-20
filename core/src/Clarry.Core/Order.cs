@@ -10,7 +10,8 @@ public enum OrderKind
     Withhold,  // cost 0, strain +1
     Reveal,    // cost 2
     Divine,    // cost 1, needs the apparatus
-    Answer     // cost 0, answers somebody's open plea
+    Answer,    // cost 0, answers somebody's open plea
+    Plea       // cost 0, asks the world for one specific thing it cannot get alone
 }
 
 /// <summary>
@@ -29,6 +30,7 @@ public static class OrderKindText
         OrderKind.Reveal => "揭露",
         OrderKind.Divine => "占卜",
         OrderKind.Answer => "应承",
+        OrderKind.Plea => "求助",
         _ => kind.ToString()
     };
 }
@@ -82,6 +84,18 @@ public sealed class Order
     /// </summary>
     public string? PleaId { get; init; }
 
+    /// <summary>
+    /// Where a plea is stuck. Six shapes of wall, and picking one is part of asking: "I need
+    /// something" is a mood, "I am short of a thing" is a request somebody can answer.
+    /// </summary>
+    public Blocked? Blocked { get; init; }
+
+    /// <summary>
+    /// What would close the gap, in the asker's own words. The world never parses it; another
+    /// character reads it and decides whether they can do that.
+    /// </summary>
+    public string? Needs { get; init; }
+
     public int Cost => Kind switch
     {
         OrderKind.Speak => 0,
@@ -92,6 +106,7 @@ public sealed class Order
         OrderKind.Reveal => 2,
         OrderKind.Divine => 1,
         OrderKind.Answer => 0,
+        OrderKind.Plea => 0,
         _ => 0
     };
 

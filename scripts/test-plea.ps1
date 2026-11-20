@@ -95,7 +95,7 @@ Check '过期的请求不再挂在等着的那一栏' ((@($board.open) | Where-O
 
 Write-Host '=== 6. 求与应都进了历史'
 $history = Get-J '/api/history?take=60'
-$asked = @($history | Where-Object { $_.kind -eq 'ask' })
+$asked = @($history | Where-Object { $_.kind -eq 'plea' })
 $said = @($history | Where-Object { $_.kind -eq 'answer' })
 Check '开口求人这件事进了历史' ($asked.Count -gt 0) $(if ($asked) { $asked[-1].text } else { '没有' })
 Check '应承这件事进了历史' ($said.Count -gt 0) $(if ($said) { $said[-1].text } else { '没有' })
@@ -115,6 +115,28 @@ Post-J '/api/save' $null | Out-Null
 $saved = Get-J '/api/pleas'
 $total = @($saved.open).Count + @($saved.answered).Count + @($saved.lapsed).Count
 Check '三类请求都还在' ($total -ge 4) ("open {0} / answered {1} / lapsed {2}" -f @($saved.open).Count, @($saved.answered).Count, @($saved.lapsed).Count)
+
+Write-Host '=== 9. 请求也能从一条订单里长出来'
+# 这一条验的是可达性，不是端点。模型能下的订单里，plea 是很久以来唯一缺席的那一种：
+# answer 在，应的那一头却到不了，于是「三条出路」里有两条永远等不到东西。
+Post-J '/api/round/begin' $null | Out-Null
+Post-J '/api/round/order' @{
+    actorId = 'alice'; kind = 'plea'
+    text  = '我想问一句：那盏灯是谁的。'
+    needs = '有人告诉我那盏灯的来历'
+    blocked = 'object'
+} | Out-Null
+Post-J '/api/round/resolve' $null | Out-Null
+$byOrder = @((Get-J '/api/pleas').open) | Where-Object { $_.needs -eq '有人告诉我那盏灯的来历' } | Select-Object -First 1
+Check '订单开出了一条请求' ($null -ne $byOrder) $(if ($byOrder) { $byOrder.id + '：' + $byOrder.needs } else { '没有' })
+Check '缺的是什么跟着订单一起记下' ($byOrder.blockedText -eq '缺一件东西') $(if ($byOrder) { $byOrder.blockedText } else { '' })
+
+Write-Host '=== 10. 这条请求也能被一条订单应下来'
+Post-J '/api/round/begin' $null | Out-Null
+Post-J '/api/round/order' @{ actorId = 'bob'; kind = 'answer'; pleaId = $byOrder.id; text = '那盏灯是我的。' } | Out-Null
+Post-J '/api/round/resolve' $null | Out-Null
+$answeredByOrder = @((Get-J '/api/pleas').answered) | Where-Object { $_.id -eq $byOrder.id } | Select-Object -First 1
+Check '应承接上了这条请求' ($answeredByOrder.answeredBy -eq 'bob') $(if ($answeredByOrder) { $answeredByOrder.answeredBy } else { '' })
 
 Write-Host ''
 if ($fails -eq 0) { Write-Host '全部检查通过' -ForegroundColor Green }

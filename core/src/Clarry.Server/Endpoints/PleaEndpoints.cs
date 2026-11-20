@@ -44,7 +44,10 @@ internal static class PleaEndpoints
             {
                 plea = Pleas.Open(ctx.World, who, blocked, r.Needs, r.Text ?? "", r.ToId,
                                   r.Lifetime ?? Pleas.DefaultLifetime, r.ShrineId);
-                ctx.World.Record(who.Id, "ask", plea.Text, r.ToId);
+                // "plea", not "ask". The same act can arrive two ways -- this endpoint, or an
+                // order the model declared -- and a history that calls it two different names
+                // makes the stage label it twice and the ledger count it half.
+                ctx.World.Record(who.Id, "plea", plea.Text, r.ToId);
                 ctx.Persist();
             }
             finally { ctx.Gate.Release(); }

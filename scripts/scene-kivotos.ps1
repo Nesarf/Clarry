@@ -52,6 +52,7 @@ function Post-J([string]$p, $b) {
 $kindLabel = @{
     speak = '说话'; act = '行动'; probe = '试探'
     give = '给予'; reveal = '揭露'; withhold = '沉默'; game = '小游戏'
+    answer = '应承'; plea = '求助'; divine = '占卜'
 }
 
 # --- 这个世界是什么 ---------------------------------------------------------------
@@ -130,6 +131,11 @@ Write-Host '=== 清空世界' -ForegroundColor Cyan
 $wiped = Post-J '/api/world/wipe' $null
 Write-Host ("  清掉 {0} 位角色、{1} 个幕；祈愿点与神留在默认的一道" -f `
         $wiped.cleared.characters, $wiped.cleared.scenes)
+
+# wipe 之后新幕的线索目标是 Scene 的默认值 3，跑六轮就自己收场。要演长一点，得把
+# 目标抬高——不然 -Rounds 20 也只走到第六拍，而请求默认三轮过期，根本等不到。
+Post-J '/api/scene/new?clueGoal=99' $null | Out-Null
+Write-Host '  线索目标抬到 99，这一场不会自己收束'
 
 Write-Host '=== 世界设定' -ForegroundColor Cyan
 $w = Post-J '/api/world' $world
