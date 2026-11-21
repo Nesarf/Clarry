@@ -815,7 +815,7 @@
     },
     {
       "id": "art-kivotos",
-      "title": "四张同人立绘入册：白底泛洪剔背、像素化、接进舞台",
+      "title": "四个同人角色的立绘与表情差分：白底泛洪剔背、像素化、接进舞台",
       "status": "done",
       "after": [
         "art-portraits"
@@ -825,6 +825,10 @@
         "assets/portraits/hisagi.png",
         "assets/portraits/komae.png",
         "assets/portraits/mikoto.png",
+        "assets/portraits/harumi-happy.png",
+        "assets/portraits/harumi-closeup.png",
+        "assets/portraits/harumi-memory.png",
+        "assets/portraits/komae-ember.png",
         "scripts/pixelize.py"
       ],
       "verifiedBy": [],
