@@ -36,3 +36,20 @@ DSH 的 profile 里两处：
 `client/index.js` 里的 `SERVER` 是 `http://127.0.0.1:3090/`。浏览器那段读不到宿主的环境变量，
 所以换了端口（`start.ps1 -Port 3091`）之后按钮会指向一个没人应答的地址 —— 此时用窗口或浏览器
 直接打开新端口即可，按钮那份要改这一行。
+
+## 撤除这一层
+
+决定不要这个按钮时，五处要一起动。少动一处，下一次启动或下一次 `plan-check` 就会说话。
+
+1. **profile 的依赖** —— `profiles/<name>/package.json` 里删两项：`dependencies` 的
+   `"clarry": "link:D:/Clarry/integrations/dsh"`，以及 `dsh.profile.bundles` 里的 `"clarry"`。
+2. **node_modules 的链接** —— 删 `profiles/<name>/node_modules/clarry`。它是个 junction，删链接不动目标。
+3. **这个目录** —— 删 `integrations/dsh`。
+4. **工程地图** —— `design/PLAN.json` 里 `dsh-header-button` 与 `decouple-dsh` 两条目标是这一层的记录，
+   一起删；`stage-view` 的 `after` 里引用了 `dsh-header-button`，也要去掉那一项。
+   改完跑 `scripts/plan-check.ps1`，有悬空引用它会直接说。
+5. **根 README** —— 目录表里 `integrations/dsh` 那一行，「现在到哪」里对 `decouple-dsh` 的提法。
+
+DSH 重启之后按钮才真的消失。清完之后 Clarry 一个字节都不少：窗口、服务、舞台、Unity 客户端
+本来就不经过这里。
+
