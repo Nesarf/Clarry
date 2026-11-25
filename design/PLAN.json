@@ -607,10 +607,11 @@
         "server-api"
       ],
       "touches": [
-        "src/client/index.js",
-        "src/host/index.js",
-        "cordis.patch.yml",
-        "package.json"
+        "integrations/dsh/client/index.js",
+        "integrations/dsh/host/index.js",
+        "integrations/dsh/cordis.patch.yml",
+        "integrations/dsh/package.json",
+        "integrations/dsh/README.md"
       ],
       "verifiedBy": []
     },
@@ -656,7 +657,7 @@
       ],
       "touches": [
         "stage/index.html",
-        "src/client/index.js",
+        "integrations/dsh/client/index.js",
         "core/src/Clarry.Server/Program.cs"
       ],
       "verifiedBy": [
@@ -857,6 +858,64 @@
         "scripts/test-plea.ps1"
       ],
       "notes": "缺口是查出来的，不是猜的：一场六轮的演出里 hisagi 想应一条请求，日志写「但没有这条请求」。查 OrderKind，八种里没有 Plea——answer 在，它应的那一头对模型不可达，所以三条出路里两条永远等不到东西，请求只能由外面的 HTTP 调用创建。改法：枚举加 Plea（花费 0）、中文名「求助」、订单与草稿各加 blocked 与 needs、prompt 补一段说明（六种缺口，开三轮，三条出路都是真的结局）、结算在应承之前加第 5.955 步开一条 Plea、端点接这两个字段。顺带统一了历史里的 kind：同一种行为过去由端点写 ask、由订单写 plea，stage 会给它两个名字，账本只数得到一半。十轮真演出里零次请求——顺利的戏不需要求助，这是对的，不是失败。真正缺的是「困境如何产生」：现在只有 strain 到 100 会失名，其余时候没有人会卡住，所以这条机制安静。"
+    },
+    {
+      "id": "host-embedding",
+      "title": "服务可内嵌：一份装配，两个宿主（控制台与窗口）共用同一个世界",
+      "status": "done",
+      "after": [
+        "server-api"
+      ],
+      "touches": [
+        "core/src/Clarry.Server/ClarryHost.cs",
+        "core/src/Clarry.Server/Program.cs"
+      ],
+      "verifiedBy": [
+        "scripts/test-all.ps1"
+      ],
+      "notes": "原先 Program.cs 是一串顶层语句：世界、记忆库、闸门、账本、十一个端点组全在一次运行里装配，谁也拿不到它。桌面窗口要的是同一个世界而不是第二份——两份装配是舞台与窗口对「谁在台上」产生分歧的起点。做法是把整段搬进 ClarryHost.Build(args)，交回一个没启动的 WebApplication：控制台 Run() 阻塞，窗口 StartAsync() 之后在关窗时 StopAsync()。判据是重构前后 23 套验收全过且结论一致，说明行为没在搬动里被改掉。"
+    },
+    {
+      "id": "desktop-shell",
+      "title": "独立窗口：Clarry.Desktop（WinForms + WebView2），窗口自己托管世界，关窗即停",
+      "status": "done",
+      "after": [
+        "host-embedding",
+        "stage-view"
+      ],
+      "touches": [
+        "core/src/Clarry.Desktop/Clarry.Desktop.csproj",
+        "core/src/Clarry.Desktop/Program.cs",
+        "core/src/Clarry.Desktop/Workspace.cs",
+        "core/src/Clarry.Desktop/StageWindow.cs",
+        "core/src/Clarry.Desktop/app.manifest",
+        "core/Clarry.slnx",
+        "start.ps1",
+        "scripts/unity-window.ps1",
+        "scripts/test-desktop.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/test-desktop.ps1"
+      ],
+      "notes": "三条规矩决定了它的形状。一是窗口不是第二个世界：3090 上有人应答就连上去，没人应答才在自己进程里起一个，所以重复双击开不出第二个舞台，关窗也不会带走不归它管的世界。二是 WebView2 的用户数据目录落在 data/webview，与世界同一处、同一条忽略规则，不进 %LOCALAPPDATA%。三是抓图不靠前台：unity-window.ps1 现在默认走 PrintWindow 加 PW_RENDERFULLCONTENT，让窗口把自己画进位图，被别的窗口盖住也读得到——实测桌面壳读到亮度 45.5，屏幕拷贝是 44.3，两张内容一致；把窗口挪到 -20000,0（完全不在任何屏幕上）再读，直接读仍然拿到完整画面（亮度 45.6）而屏幕拷贝在那种位置只能拿到空。验收十一项，其中「关窗之后世界也停了」用 CloseMainWindow 触发，与点叉同一条消息，Kill 验不出这一条。"
+    },
+    {
+      "id": "decouple-dsh",
+      "title": "DSH 薄壳退成可选附属：仓库根不再是 npm 包",
+      "status": "done",
+      "after": [
+        "dsh-header-button",
+        "desktop-shell"
+      ],
+      "touches": [
+        "integrations/dsh/package.json",
+        "integrations/dsh/cordis.patch.yml",
+        "integrations/dsh/host/index.js",
+        "integrations/dsh/client/index.js",
+        "integrations/dsh/README.md"
+      ],
+      "verifiedBy": [],
+      "notes": "从「Clarry 是 DSH 里的一个插件」改成「Clarry 是一个软件，DSH 里那个按钮是可选的一层」。动作是 git mv：package.json、cordis.patch.yml、host/、client/ 一起收进 integrations/dsh，根目录因此不再有 package.json——这不只是搬家，它让「不装 DSH 也照常跑」变成结构事实而不是一句说明。代价是 DSH 那边的 link 要跟着改（profiles/<name>/package.json 里从 link:D:/Clarry 改成 link:D:/Clarry/integrations/dsh），改完要重启 DSH 才生效。判据是那一侧的三个入口（package.json、host/index.js、client/index.js）都可达。"
     }  ],
   "title": "Clarry — Agent 戏剧平台"
 }

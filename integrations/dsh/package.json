@@ -1,20 +1,19 @@
 {
   "name": "clarry",
   "version": "0.1.0",
-  "description": "Clarry - a Hippocras variant: a theatre where agents play among themselves, with the user joining only when their character is addressed.",
+  "description": "Optional DSH button for Clarry. The theatre itself is a standalone program (start.ps1 / Clarry.Desktop); this package only adds a button that opens its stage page.",
   "type": "module",
-  "main": "./src/host/index.js",
+  "main": "./host/index.js",
   "exports": {
-    ".": "./src/host/index.js",
-    "./client": "./src/client/index.js",
+    ".": "./host/index.js",
+    "./client": "./client/index.js",
     "./package.json": "./package.json"
   },
   "files": [
-    "src",
+    "host",
+    "client",
     "cordis.patch.yml",
-    "README.md",
-    "docs",
-    "LICENSE"
+    "README.md"
   ],
   "dsh": {
     "bundle": {

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Clarry as a program someone double-clicks.
+
+    WinForms rather than WPF: the window is one WebView2 and a menu, and a XAML tree would be
+    more markup than behaviour. The stage page stays the same HTML the browser stage serves,
+    so the window is a second surface onto the one world rather than a second renderer.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>Clarry.Desktop</AssemblyName>
+    <RootNamespace>Clarry.Desktop</RootNamespace>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!--
+      WebView2 ships a WPF assembly beside the WinForms one. We use the WinForms one, but the WPF
+      one drags a WindowsBase 5.0 reference that the net10 reference assemblies pin at 4.0, so the
+      resolver reports a version clash on every single build. That is a packaging artefact rather
+      than a real conflict, since nothing here touches WPF, so the warning is silenced once in the
+      one place that would otherwise have to be read past on every build.
+    -->
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The server as a library: the window starts the very same world in its own process. -->
+    <ProjectReference Include="..\Clarry.Server\Clarry.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4370.26" />
+  </ItemGroup>
+
+</Project>

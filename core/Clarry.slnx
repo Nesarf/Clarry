@@ -2,5 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/Clarry.Core/Clarry.Core.csproj" />
     <Project Path="src/Clarry.Server/Clarry.Server.csproj" />
+    <Project Path="src/Clarry.Desktop/Clarry.Desktop.csproj" />
   </Folder>
 </Solution>

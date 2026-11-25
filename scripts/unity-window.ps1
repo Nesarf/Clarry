@@ -1,26 +1,36 @@
-# unity-window.ps1 - 从外面读正在运行的 Unity 编辑器窗口，存成 PNG。
+# unity-window.ps1 - 从外面读一个正在运行的窗口，存成 PNG。
 #
-# 这条路不需要 Unity 的任何授权、模块或脚本：它抓的是 Windows 合成到屏幕上的那一片像素。
-# 走过三条 Unity 内部的路都不通（ScreenCapture 不落盘、CaptureScreenshotAsTexture 返回空、
-# 等一帧的协程要在运行时程序集里而那个程序集没有 ScreenCapture 模块），所以换到外面来。
+# 两条路，默认先走第一条：
 #
-# 两个前提，缺一个就抓不到：
-#   1. 编辑器窗口不能最小化。脚本会替你还原并前置，除非给 -NoFocus。
-#   2. 别让别的窗口盖在它上面——从屏幕拷像素，盖住的部分拷到的是盖子。
+#   1. 直接读（PrintWindow + PW_RENDERFULLCONTENT）。让窗口自己把客户区画到一个内存位图上：
+#      不需要它在最前面，也不需要它在屏幕上。被别的窗口盖住、放到第二块屏、拖到屏幕外都读得到。
+#      这是默认路径。
+#   2. 屏幕拷贝（CopyFromScreen）。从 Windows 合成到屏幕上的像素里裁一块，窗口必须在屏幕上
+#      且没被盖住。只在直接读回全黑时退到这里，或者用 -Screen 强制。
+#
+# 两条路默认都不抢前台。读一个窗口不该改变用户眼前是什么，也不该让被测的东西跑到最前面来
+# 证明自己在跑 —— 那会让「读得到」这件事依赖被测窗口获得了焦点。只有 -Focus 才叫到最前，
+# 而且那是调试用的：确认抓到的与用户看到的是同一份。
+#
+# 最小化是唯一的例外：最小化的窗口没有可读的客户区，脚本会把它还原（还原不等于抢前台，
+# 它仍然留在原来那一层），还原之后仍然走直接读。
 #
 # 用法：
-#   & scripts\unity-window.ps1                             抓整个编辑器
-#   & scripts\unity-window.ps1 -View GameView              只抓 Game 视图
-#   & scripts\unity-window.ps1 -View SceneView -Out D:\x.png
-#   & scripts\unity-window.ps1 -NoFocus                    不抢焦点（窗口本来就在前台时用）
+#   & scripts\unity-window.ps1                                 抓 Unity 编辑器（直接读）
+#   & scripts\unity-window.ps1 -ProcessName Clarry.Desktop      抓 Clarry 的窗口
+#   & scripts\unity-window.ps1 -View GameView -Out D:\x.png     只抓某个子窗口
+#   & scripts\unity-window.ps1 -Screen                          强制走屏幕拷贝，用来做对照
+#   & scripts\unity-window.ps1 -Focus                           顺便把窗口叫到最前（默认不叫）
 #
-# 输出一行 JSON：路径、尺寸、平均亮度。亮度接近 0 就是黑图，说明窗口不在屏幕上。
+# 输出一行 JSON：路径、尺寸、平均亮度、走的是哪条路。亮度接近 0 就是黑图。
 
 param(
     [string]$Out = 'D:\Clarry\shots\unity.png',
     [int]$ProcessId = 0,
+    [string]$ProcessName = 'Unity',
     [string]$View = '',
-    [switch]$NoFocus
+    [switch]$Screen,
+    [switch]$Focus
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +54,10 @@ public class UnityWin {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+
+    /// 让窗口把自己画进给定的 DC。PW_RENDERFULLCONTENT = 2，Windows 8.1 起才有，
+    /// 它要的正是「把 DWM 合成的那一份也画进来」——少了它，加速渲染的窗口会画成空白。
+    [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
 
     static string Title(IntPtr h) { var t = new StringBuilder(300); GetWindowTextW(h, t, 300); return t.ToString(); }
 
@@ -99,24 +113,19 @@ public class UnityWin {
 [UnityWin]::SetProcessDPIAware() | Out-Null
 
 if ($ProcessId -eq 0) {
-    $proc = Get-Process Unity -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $proc) { throw '没有在跑的 Unity 进程。' }
+    $proc = Get-Process $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $proc) { throw "没有在跑的 $ProcessName 进程。" }
     $ProcessId = $proc.Id
 }
 
 $top = [UnityWin]::Top([uint32]$ProcessId)
 if ($top -eq [IntPtr]::Zero) { throw "进程 $ProcessId 没有顶层窗口。" }
 
+# 最小化的窗口没有可读的客户区，两条路都读不到东西，所以这一步与前台无关、照做。
 if ([UnityWin]::IsIconic($top)) {
-    if ($NoFocus) { throw '窗口是最小化的，读了也是黑的。去掉 -NoFocus 让脚本把它叫起来。' }
     [UnityWin]::ShowWindow($top, 9) | Out-Null   # SW_RESTORE
+    Start-Sleep -Milliseconds 400
 }
-
-if (-not $NoFocus) {
-    [UnityWin]::SetForegroundWindow($top) | Out-Null
-}
-
-Start-Sleep -Milliseconds 700
 
 $target = $top
 if ($View) {
@@ -132,40 +141,77 @@ $rect = New-Object UnityWin+RECT
 $w = $rect.Right - $rect.Left
 $h = $rect.Bottom - $rect.Top
 
-if ($w -le 0 -or $h -le 0 -or $rect.Left -lt -1000) {
-    throw "窗口不在屏幕上（矩形 $($rect.Left),$($rect.Top) ${w}x${h}）。"
+if ($w -le 0 -or $h -le 0) {
+    throw "窗口没有有效尺寸（${w}x${h}）。"
 }
 
 $dir = Split-Path -Parent $Out
 if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
 
-$bmp = New-Object System.Drawing.Bitmap $w, $h
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-try {
-    $g.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size $w, $h))
-}
-finally { $g.Dispose() }
-
-$sum = 0
-$n = 0
-for ($y = 0; $y -lt $h; $y += 17) {
-    for ($x = 0; $x -lt $w; $x += 17) {
-        $c = $bmp.GetPixel($x, $y)
-        $sum += $c.R + $c.G + $c.B
-        $n++
+# 平均亮度：抽样即可，这个数字只用来回答「是不是黑图」。
+function Brightness([System.Drawing.Bitmap]$bmp) {
+    $sum = 0; $n = 0
+    for ($y = 0; $y -lt $bmp.Height; $y += 17) {
+        for ($x = 0; $x -lt $bmp.Width; $x += 17) {
+            $c = $bmp.GetPixel($x, $y)
+            $sum += $c.R + $c.G + $c.B
+            $n++
+        }
     }
+    if ($n -eq 0) { return 0 }
+    return [math]::Round($sum / (3 * $n), 1)
 }
 
+# --- 第一条路：直接读 ---------------------------------------------------------------
+$bmp = $null
+$mode = 'direct'
+$drawn = $false
+
+if (-not $Screen) {
+    $bmp = New-Object System.Drawing.Bitmap $w, $h
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $hdc = $g.GetHdc()
+    try {
+        $drawn = [UnityWin]::PrintWindow($target, $hdc, 2)   # PW_RENDERFULLCONTENT
+    }
+    finally {
+        $g.ReleaseHdc($hdc)
+        $g.Dispose()
+    }
+    if (-not $drawn) { $bmp.Dispose(); $bmp = $null }
+}
+
+# --- 第二条路：屏幕拷贝（回退，或者 -Screen 指定）----------------------------------
+if ($null -eq $bmp -or (Brightness $bmp) -lt 1) {
+    # 全黑就当作直接读没拿到内容（WebView2、某些 GPU 合成的窗口会这样）。
+    if ($null -ne $bmp) { $bmp.Dispose(); $bmp = $null }
+
+    if ($rect.Left -lt -1000 -or $rect.Right -lt 0) {
+        throw "直接读没拿到内容，而窗口不在屏幕上（矩形 $($rect.Left),$($rect.Top)），屏幕拷贝这条路也走不了。"
+    }
+
+    # 只有 -Focus 才叫到最前。默认不叫：读到的东西不该取决于它有没有获得焦点。
+    if ($Focus) { [UnityWin]::SetForegroundWindow($top) | Out-Null; Start-Sleep -Milliseconds 700 }
+
+    $bmp = New-Object System.Drawing.Bitmap $w, $h
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    try { $g.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size $w, $h)) }
+    finally { $g.Dispose() }
+    $mode = 'screen'
+}
+
+$brightness = Brightness $bmp
 $bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Dispose()
 
 [pscustomobject]@{
-    ok       = $true
-    path     = $Out
-    bytes    = (Get-Item -LiteralPath $Out).Length
-    width    = $w
-    height   = $h
-    at       = "$($rect.Left),$($rect.Top)"
-    view     = $(if ($View) { $View } else { '(整个编辑器)' })
-    brightness = [math]::Round($sum / (3 * $n), 1)
+    ok         = $true
+    path       = $Out
+    bytes      = (Get-Item -LiteralPath $Out).Length
+    width      = $w
+    height     = $h
+    at         = "$($rect.Left),$($rect.Top)"
+    view       = $(if ($View) { $View } else { '(整个窗口)' })
+    mode       = $mode
+    brightness = $brightness
 } | ConvertTo-Json -Compress

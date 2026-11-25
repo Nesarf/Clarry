@@ -4,6 +4,8 @@
 
 角色在里面说话、开店、打牌、占卜、闹别扭。它们各自有记忆、对彼此有称呼、性格会随着发生的事情慢慢挪动。你打开页面能看见它们正在做什么，也能用许愿把镜头挪一下——但你没有台词要念。
 
+**它是一个程序，不是一个插件。** 跑 `start.ps1` 会开一个窗口，世界由那个窗口自己托管。舞台页面、Unity 客户端、curl、以及 DeepSeek Harness 里那个可选按钮，都只是连到这个世界上的客户端——它们共同的品格是可以关掉，而世界照常转。
+
 ## 三条不变量
 
 这三条决定了整个设计，改起来比改代码难。
@@ -22,20 +24,25 @@
 git clone git@github.com:Nesarf/Clarry.git D:\Clarry
 cd D:\Clarry
 
-# 1. 编译。会先停掉正在跑的服务——它锁着 Clarry.Core.dll。
-& .\rebuild.ps1 -Start
-
-# 2. 打开舞台
-start http://127.0.0.1:3090
+# 一条命令：没编译过就先编译，然后开窗口
+& .\start.ps1
 ```
 
-服务端默认把 `/` 重定向到 `/stage`，舞台页面就是 `stage/index.html`。它通过公开的 HTTP 接口读世界，和任何其他客户端（Unity、curl）走同一条路。
+窗口先看 `127.0.0.1:3090` 上有没有人应答：没有就在自己进程里起一个世界，有就连上去。所以重复跑 `start.ps1` 开不出第二个世界，关掉窗口也不会带走一个不归它管的世界。换端口用 `-Port 3091`，强制重编译用 `-Build`。
 
-**克隆到别的位置时要设 `CLARRY_ROOT`。** 服务端默认把这个工程的根钉在 `D:\Clarry`，挪到别处就找不到 `stage/` 和 `assets/`。世界存档与记忆库落在 `CLARRY_ROOT\data`，可以用 `CLARRY_DATA` 另指。
+只要 HTTP 表面、不要窗口（给 Unity、给脚本、给同一台机器上的别的客户端）：
+
+```powershell
+& .\rebuild.ps1 -Start
+```
+
+服务端默认把 `/` 重定向到 `/stage`，舞台页面就是 `stage/index.html`。它通过公开的 HTTP 接口读世界，和任何其他客户端（Unity、curl、窗口）走同一条路。
+
+**克隆到别的位置时要设 `CLARRY_ROOT`。** `start.ps1` 会自己把它设成脚本所在目录，窗口从 exe 所在目录往上找 `stage/index.html` 也行；两条路都找不到时（比如把 exe 单独拷走）才需要手动设。世界存档与记忆库落在 `CLARRY_ROOT\data`，可以用 `CLARRY_DATA` 另指。
 
 ```powershell
 $env:CLARRY_ROOT = 'C:\code\Clarry'
-& .\rebuild.ps1 -Start
+& .\start.ps1
 ```
 
 世界刚起来是空的。要有人，先建几个人：
@@ -67,7 +74,7 @@ curl http://127.0.0.1:3090/api/world
 
 **桥** —— `scripts/unity-bridge.ps1 status|play|stop|log|refresh|game`，通过工程根的 `.bridge/in` 与 `.bridge/out` 两个目录跟正在运行的编辑器说话。它存在的原因很具体：这台机器上的 Unity 在 batchmode 下拿不到 headless entitlement，2019 与 2022 两个版本都过不去，所以「从外面启动编辑器」这条路断了。但 GUI 授权是好的，于是换成让已经在跑的那个接命令。Editor 那一侧在 `Assets/Editor/ClarryBridge.cs`。
 
-**读窗口** —— `scripts/unity-window.ps1 -View GameView`，把编辑器窗口从屏幕上抓下来存成 PNG，输出一行 JSON（路径、尺寸、平均亮度）。它抓的是 Windows 合成之后的像素，不依赖 Unity 的任何模块。前提是窗口不能最小化：脚本会替你还原并前置，盖在它上面的窗口则会一起被抓进来。
+**读窗口** —— `scripts/unity-window.ps1 -ProcessName Clarry.Desktop`，把窗口存成 PNG，输出一行 JSON（路径、尺寸、平均亮度、走的是哪条路）。默认走 `PrintWindow` 加 `PW_RENDERFULLCONTENT`：让窗口把自己画进一张位图，所以它不必在前台，被别的窗口盖住也读得到。直接读回来是全黑时才退回屏幕拷贝，那条路才要求窗口在屏幕上、没被盖住，脚本会替你还原并前置。`-Screen` 可以强制走回退那条做对照。
 
 Unity 自己的两条截图路都不通，理由写在 `ClarryBridge.TryShot` 的注释里：`ScreenCapture.CaptureScreenshot` 排得进却从不落盘，`CaptureScreenshotAsTexture` 要等一帧，而那个协程得放在运行时程序集里，那里没有 screencapture 模块。
 
@@ -77,7 +84,9 @@ Unity 自己的两条截图路都不通，理由写在 `ClarryBridge.TryShot` �
 & .\scripts\test-all.ps1
 ```
 
-22 套验收，二十秒出头跑完，最后只说一句结论。它按依赖顺序排——先属性与记忆这类不依赖别的东西的，再回合、再幕、再多幕，最后才是建在多幕之上的场所、班次与视线。所以某套失败时，前面那些已经证明是好的，不用从头猜。
+24 套验收，四十秒左右跑完，最后只说一句结论。它按依赖顺序排——先属性与记忆这类不依赖别的东西的，再回合、再幕、再多幕，最后才是建在多幕之上的场所、班次与视线。所以某套失败时，前面那些已经证明是好的，不用从头猜。
+
+最后一套 `test-desktop` 和别人不一样：它会真开一个窗口，占 3097 端口、用 `data/test-desktop` 那一份空世界，验完自动关掉。要验的是「窗口自己托管世界、关窗即停」，而那件事只有在窗口独占一个世界时才看得清，所以它不去碰 3090 上正在演的那一份。
 
 只跑一套：
 
@@ -91,17 +100,20 @@ Unity 自己的两条截图路都不通，理由写在 `ClarryBridge.TryShot` �
 
 | 路径 | 是什么 |
 | --- | --- |
+| `start.ps1` | 入口：编译（需要时）然后开窗口 |
 | `core/src/Clarry.Core` | 领域模型：角色、属性、幕、回合、请求、许愿、占卜、小游戏 |
-| `core/src/Clarry.Server` | HTTP 表面。`Program.cs` 只有启动与十一个端点组的挂载，业务在各组自己的文件里 |
+| `core/src/Clarry.Server` | HTTP 表面。`ClarryHost.Build` 装配整个世界，`Program.cs` 只是把它跑起来的那个控制台宿主 |
+| `core/src/Clarry.Desktop` | 独立窗口。WinForms 一帧，里面一个 WebView2 显示舞台；世界由它自己托管 |
 | `stage/index.html` | 舞台页面 |
 | `assets/portraits` | 像素立绘与表情差分 |
-| `scripts` | 22 套验收，加上出图、音频、体积测量几个工具 |
-| `design/PLAN.json` | 工程地图。45 个目标，每个都记着碰哪些文件、由哪套验收判 |
+| `scripts` | 24 套验收，加上出图、音频、体积测量几个工具 |
+| `design/PLAN.json` | 工程地图。54 个目标，每个都记着碰哪些文件、由哪套验收判 |
+| `integrations/dsh` | 可选的 DSH 按钮。不装它，上面每一样都照常跑 |
 | `docs` | 机制、风格、技术栈、记忆、美术、音频、仓库 |
 
 ## 现在到哪
 
-45 个目标，43 个完成，2 个待办：`fourth-wall`（极低概率的察觉，刻意等语气稳住）与 `unity-stage`（Unity 客户端，等客户端与服务端的分工定下来）。
+54 个目标，全部完成，没有待办。最近三件是 `plea-order`（请求成为一种订单：模型能自己开口）、`desktop-shell`（独立窗口）与 `decouple-dsh`（DSH 那个按钮退成可选的一层）。
 
 ```powershell
 # 更新工程地图之后核对它读得动
