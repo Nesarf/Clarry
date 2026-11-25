@@ -600,22 +600,6 @@
       "verifiedBy": []
     },
     {
-      "id": "dsh-header-button",
-      "title": "DSH 顶部按钮：点开切换舞台视图（已验证显示 x/64）",
-      "status": "done",
-      "after": [
-        "server-api"
-      ],
-      "touches": [
-        "integrations/dsh/client/index.js",
-        "integrations/dsh/host/index.js",
-        "integrations/dsh/cordis.patch.yml",
-        "integrations/dsh/package.json",
-        "integrations/dsh/README.md"
-      ],
-      "verifiedBy": []
-    },
-    {
       "id": "agent-driver",
       "title": "Agent 驱动层：任意 HTTP 可及的 LLM 提交 Order；上限是六十四位主角色，不是总人数",
       "status": "done",
@@ -652,12 +636,10 @@
       "title": "舞台视图：台词流 + 席位卡 + 六维条 + 用户下令面板，托管在 /stage",
       "status": "done",
       "after": [
-        "dsh-header-button",
         "agent-driver"
       ],
       "touches": [
         "stage/index.html",
-        "integrations/dsh/client/index.js",
         "core/src/Clarry.Server/Program.cs"
       ],
       "verifiedBy": [
@@ -898,24 +880,6 @@
         "scripts/test-desktop.ps1"
       ],
       "notes": "三条规矩决定了它的形状。一是窗口不是第二个世界：3090 上有人应答就连上去，没人应答才在自己进程里起一个，所以重复双击开不出第二个舞台，关窗也不会带走不归它管的世界。二是 WebView2 的用户数据目录落在 data/webview，与世界同一处、同一条忽略规则，不进 %LOCALAPPDATA%。三是抓图不靠前台：unity-window.ps1 现在默认走 PrintWindow 加 PW_RENDERFULLCONTENT，让窗口把自己画进位图，被别的窗口盖住也读得到——实测桌面壳读到亮度 45.5，屏幕拷贝是 44.3，两张内容一致；把窗口挪到 -20000,0（完全不在任何屏幕上）再读，直接读仍然拿到完整画面（亮度 45.6）而屏幕拷贝在那种位置只能拿到空。验收十一项，其中「关窗之后世界也停了」用 CloseMainWindow 触发，与点叉同一条消息，Kill 验不出这一条。"
-    },
-    {
-      "id": "decouple-dsh",
-      "title": "DSH 薄壳退成可选附属：仓库根不再是 npm 包",
-      "status": "done",
-      "after": [
-        "dsh-header-button",
-        "desktop-shell"
-      ],
-      "touches": [
-        "integrations/dsh/package.json",
-        "integrations/dsh/cordis.patch.yml",
-        "integrations/dsh/host/index.js",
-        "integrations/dsh/client/index.js",
-        "integrations/dsh/README.md"
-      ],
-      "verifiedBy": [],
-      "notes": "从「Clarry 是 DSH 里的一个插件」改成「Clarry 是一个软件，DSH 里那个按钮是可选的一层」。动作是 git mv：package.json、cordis.patch.yml、host/、client/ 一起收进 integrations/dsh，根目录因此不再有 package.json——这不只是搬家，它让「不装 DSH 也照常跑」变成结构事实而不是一句说明。代价是 DSH 那边的 link 要跟着改（profiles/<name>/package.json 里从 link:D:/Clarry 改成 link:D:/Clarry/integrations/dsh），改完要重启 DSH 才生效。判据是那一侧的三个入口（package.json、host/index.js、client/index.js）都可达。撤除清单写在 integrations/dsh/README.md 的「撤除这一层」一节：profile 的两处声明、node_modules 的链接、这个目录本身、以及本表的 dsh-header-button 与 decouple-dsh 两条目标（stage-view 的 after 里引用了前者，要一起去掉）。五处要一起动。"
     }  ],
   "title": "Clarry — Agent 戏剧平台"
 }

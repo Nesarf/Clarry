@@ -1,5 +1,0 @@
-# Clarry bundle patch: one plugin row, no system-prompt overlay, no global policy change.
-- insert:
-    - id: clarry
-      name: clarry
-      inject: [tools, webServer, sessions]
