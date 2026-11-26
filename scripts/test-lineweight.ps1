@@ -116,7 +116,7 @@ $flat = $cast | Where-Object { $_.id -eq 'carol' }
 Check '全场的人候选里没有镜头图' (($flat.faces | Where-Object { $_ -match 'closeup|memory' }).Count -eq 0) (($flat.faces) -join ' → ')
 
 Write-Host '=== 6. 资产清点脚本能跑，并且说得清缺什么'
-$audit = & 'D:\Clarry\scripts\check-art.ps1' *>&1 | Out-String
+$audit = & (Join-Path $PSScriptRoot 'check-art.ps1') *>&1 | Out-String
 Check '清点脚本跑通了' ($audit -match '汇总') '有汇总行'
 Check '它点出了缺的差分' ($audit -match '缺 .*-closeup\.png') '列出了 closeup 的缺口'
 

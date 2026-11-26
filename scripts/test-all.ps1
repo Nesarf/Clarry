@@ -80,7 +80,7 @@ try {
     $null = Invoke-RestMethod -Uri "$Base/api/world" -Method Get -TimeoutSec 5
 } catch {
     Write-Host ("  连不上 {0}" -f $Base) -ForegroundColor Red
-    Write-Host '  先把服务起起来：& D:\Clarry\rebuild.ps1 -Start' -ForegroundColor Yellow
+    Write-Host ('  先把服务起起来：& ' + (Join-Path (Split-Path -Parent $PSScriptRoot) 'rebuild.ps1') + ' -Start') -ForegroundColor Yellow
     exit 1
 }
 Write-Host ("  在跑（{0}）" -f $Base) -ForegroundColor Green

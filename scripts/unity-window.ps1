@@ -25,7 +25,7 @@
 # 输出一行 JSON：路径、尺寸、平均亮度、走的是哪条路。亮度接近 0 就是黑图。
 
 param(
-    [string]$Out = 'D:\Clarry\shots\unity.png',
+    [string]$Out = (Join-Path (Split-Path -Parent $PSScriptRoot) 'shots/unity.png'),
     [int]$ProcessId = 0,
     [string]$ProcessName = 'Unity',
     [string]$View = '',

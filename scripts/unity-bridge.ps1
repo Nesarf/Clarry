@@ -20,7 +20,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string]$Command,
     [string]$Arg = '',
-    [string]$Project = 'D:\Clarry\unity\ClarryStage',
+    [string]$Project = (Join-Path (Split-Path -Parent $PSScriptRoot) 'unity/ClarryStage'),
     [int]$TimeoutSec = 15
 )
 

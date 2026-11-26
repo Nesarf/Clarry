@@ -9,8 +9,9 @@ from pathlib import Path
 
 from PIL import Image
 
-PORTRAITS = Path(r"D:\Clarry\assets\portraits")
-OUT = Path(r"D:\Clarry\data")
+REPO = Path(__file__).resolve().parent.parent
+PORTRAITS = REPO / "assets" / "portraits"
+OUT = REPO / "data"
 DARK = (0x1A, 0x1E, 0x3A, 255)
 NAMES = ("alice_001_sprite", "bob_001_sprite", "carol_001_sprite")
 

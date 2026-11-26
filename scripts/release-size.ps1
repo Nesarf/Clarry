@@ -4,7 +4,7 @@
 # 这个脚本只报实测，不做判断，超了就照实说超了。
 
 param(
-    [string]$Root = 'D:\Clarry',
+    [string]$Root = (Split-Path -Parent $PSScriptRoot),
     [double]$WorkspaceLimitGB = 60,
     [double]$ReleaseLimitGB = 5,
     [string]$ReleaseDir = ''

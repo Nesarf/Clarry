@@ -2,7 +2,7 @@
 # 不依赖服务：角色名就是 portraits 目录里那些不带 - 与 _ 的 png 文件名。
 
 param(
-    [string]$Portraits = 'D:\Clarry\assets\portraits'
+    [string]$Portraits = (Join-Path (Split-Path -Parent $PSScriptRoot) 'assets/portraits')
 )
 
 $ErrorActionPreference = 'Stop'
