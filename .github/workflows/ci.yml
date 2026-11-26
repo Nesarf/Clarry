@@ -25,9 +25,12 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - uses: actions/checkout@v4
+      # 钉在 major tag 上，不钉具体版本号。这两个 action 在这里只用最基础的能力 ——
+      # 拉一次代码、装一个 SDK —— 跨 major 升级的破坏面很小，而旧版 v4 会被强制跑在
+      # Node 24 上并每次留下一条 annotation。升级本身由这一步自己验证：绿了就是可行。
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
