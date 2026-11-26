@@ -103,6 +103,12 @@ internal static class WorldEndpoints
                     // Which image to show is a list, most specific first. The stage walks it and
                     // stops at the first file that loads, so an undrawn close-up falls back to
                     // the pixel portrait instead of leaving a hole where a character should be.
+                    //
+                    // The list deliberately contains files that may not exist: whether a name has
+                    // been drawn is a fact about this checkout, not about the rules, and putting
+                    // a disk check here would make /api/cast answer differently on two machines
+                    // holding the same world. The client is the one that tries, and it can see
+                    // its own 404s.
                     shot = ctx.World.Shots.GetValueOrDefault(c.Id, Shot.Wide).ToString().ToLowerInvariant(),
                     shotText = ShotRules.Text(ctx.World.Shots.GetValueOrDefault(c.Id, Shot.Wide)),
                     faces = ShotRules.Candidates(

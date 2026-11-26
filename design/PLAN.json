@@ -725,7 +725,8 @@
         "scripts/unity-window.ps1"
       ],
       "verifiedBy": [
-        "scripts/unity-window.ps1"
+        "scripts/unity-window.ps1",
+        "scripts/test-unity-api.ps1"
       ],
       "notes": "原计划写的是「共享 C# 模型」，实际做不到也做不得：Clarry.Core 停在 C# 13（required 成员、file 作用域命名空间），Unity 2022.3 的 C# 9 编译不了；为了抄几个字段把两边绑在同一个编译器版本上，代价比抄一次大。所以 DTO 是抄的，字段名就是 JSON 的字段名。分工选渲染层：哪张画由服务端算，客户端按 face/faces 的候选链逐张试——早一版只读第一项，于是每一个没画的表情都变成 404 和白卡。布局用锚点不用 VerticalLayoutGroup，也是试出来的：关掉 childControlHeight 立绘退回 100×100 的默认框被压成拇指，打开它立绘吃掉全部高度、两行字一个都看不见。桥那条是因为授权：batchmode 拿不到 com.unity.editor.headless，2019 与 2022 都过不去，于是让运行中的编辑器读 .bridge/in 接命令。截图最后没走 Unity，改成从屏幕抓窗口——三条内路都不通，理由写在 TryShot 的注释里。verifiedBy 记的是那条能复现的核对路，不是免费判据：它要把编辑器窗口调到前台。"
     },
@@ -880,6 +881,28 @@
         "scripts/test-desktop.ps1"
       ],
       "notes": "三条规矩决定了它的形状。一是窗口不是第二个世界：3090 上有人应答就连上去，没人应答才在自己进程里起一个，所以重复双击开不出第二个舞台，关窗也不会带走不归它管的世界。二是 WebView2 的用户数据目录落在 data/webview，与世界同一处、同一条忽略规则，不进 %LOCALAPPDATA%。三是抓图不靠前台：unity-window.ps1 现在默认走 PrintWindow 加 PW_RENDERFULLCONTENT，让窗口把自己画进位图，被别的窗口盖住也读得到——实测桌面壳读到亮度 45.5，屏幕拷贝是 44.3，两张内容一致；把窗口挪到 -20000,0（完全不在任何屏幕上）再读，直接读仍然拿到完整画面（亮度 45.6）而屏幕拷贝在那种位置只能拿到空。验收十一项，其中「关窗之后世界也停了」用 CloseMainWindow 触发，与点叉同一条消息，Kill 验不出这一条。"
+    },
+    {
+      "id": "unity-contract",
+      "title": "Unity 侧的契约：DTO 的键名与类型对得上服务端，没画立绘的人不再被给一条注定 404 的路径",
+      "status": "done",
+      "after": [
+        "unity-stage",
+        "art-lineweight"
+      ],
+      "touches": [
+        "unity/ClarryStage/Assets/Scripts/ClarryApi.cs",
+        "core/src/Clarry.Server/StageAssets.cs",
+        "core/src/Clarry.Server/ClarryApp.cs",
+        "core/src/Clarry.Server/ClarryHost.cs",
+        "core/src/Clarry.Server/Endpoints/WorldEndpoints.cs",
+        "scripts/test-unity-api.ps1",
+        "scripts/test-all.ps1"
+      ],
+      "verifiedBy": [
+        "scripts/test-unity-api.ps1"
+      ],
+      "notes": "Unity 那份 DTO 是手抄的，抄错的样子很安静：Attributes 里 ember 抄成了 int，而服务端给的是布尔（有没有余火）；bond 与 names 在服务端是对象，JsonUtility 根本不支持字典，抄成 int 或 Dictionary 都会让整个成员反序列化成默认值。两种错都不抛异常，只是永远读成 0 或 false。所以加了一条判据：scripts/test-unity-api.ps1 从 ClarryApi.cs 里读字段名与类型，另一边拿真实的 /api/cast 与 /api/history 对账——判据不自己抄一份表，否则判据也会漂。它必须在 test-glimpse 之前跑：那一套会 wipe 世界、只留两个没有立绘的角色。另有一件事是试过又撤回的：曾让服务端只交出盘上存在的立绘路径（StageAssets.Existing），想省掉客户端每拍一串 404；跑全套时 test-expression 与 test-lineweight 立刻说不行——它们验的正是「候选链按规则列出该试哪些名字」，而链里天生包含还没画的名字。撤回服务端过滤，把理由写进 WorldEndpoints 的注释：一张名字画没画是这个 checkout 的事实，不是规则的事实，把磁盘检查放进去会让同一份存档在两台机器上给出不同的 /api/cast。"
     }  ],
   "title": "Clarry — Agent 戏剧平台"
 }

@@ -20,6 +20,15 @@ namespace ClarryStage
         /// <summary>Where the theatre is. Change it here, nowhere else.</summary>
         public static string BaseUrl = "http://127.0.0.1:3090";
 
+        /// <summary>
+        /// 六维与那两样状态里，JsonUtility 处理得了的部分。
+        ///
+        /// 响应里的 bond 与 names 是对象，JsonUtility 不支持字典 —— 抄成 Dictionary 会让整个
+        /// 成员的反序列化失败，而失败的样子是「所有字段都是默认值」，不是一条错误。所以它们
+        /// 不在这份 DTO 里。ember 在服务端是布尔（有没有余火），早先这里抄成了 int，那种错
+        /// 也一样安静：类型对不上时 JsonUtility 跳过那个字段，读出来永远是 0。
+        /// scripts/unity-api-check.ps1 会把这两类漂移都摆出来。
+        /// </summary>
         [Serializable]
         public class Attributes
         {
@@ -28,8 +37,7 @@ namespace ClarryStage
             public int renown;
             public int strain;
             public int reserve;
-            public int ember;
-            public int bond;
+            public bool ember;
         }
 
         [Serializable]
