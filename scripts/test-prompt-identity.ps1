@@ -119,7 +119,11 @@ Check '别人看不到我的印象' ($other.text -notmatch '说话却很直') '�
 
 Write-Host '=== 9. 印象落在盘上'
 Post-J '/api/save' $null | Out-Null
-$worldFile = if ($env:CLARRY_DATA) { $env:CLARRY_DATA } else { 'D:\Clarry\data\world.json' }
+# CLARRY_DATA 指的是放世界存档的那个目录，不是存档本身。早先这里把它当文件用了，
+# 本地没设这个环境变量所以一路走到默认路径、看不出问题；CI 里设了，于是它拿目录去
+# Get-Content，报的是「Unable to get content because it is a directory」。
+$dataDir = if ($env:CLARRY_DATA) { $env:CLARRY_DATA } else { 'D:\Clarry\data' }
+$worldFile = Join-Path $dataDir 'world.json'
 if (Test-Path -LiteralPath $worldFile) {
     $json = Get-Content -LiteralPath $worldFile -Raw -Encoding UTF8
     Check '存档里写下了这句印象' ($json -match '说话却很直') '在盘上'
