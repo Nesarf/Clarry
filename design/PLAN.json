@@ -892,9 +892,6 @@
       ],
       "touches": [
         "unity/ClarryStage/Assets/Scripts/ClarryApi.cs",
-        "core/src/Clarry.Server/StageAssets.cs",
-        "core/src/Clarry.Server/ClarryApp.cs",
-        "core/src/Clarry.Server/ClarryHost.cs",
         "core/src/Clarry.Server/Endpoints/WorldEndpoints.cs",
         "scripts/test-unity-api.ps1",
         "scripts/test-all.ps1"
