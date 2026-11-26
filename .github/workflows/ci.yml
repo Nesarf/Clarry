@@ -1,0 +1,83 @@
+# CI：每次推到 main 或开 PR，在 GitHub 的 Windows runner 上编译一遍、跑一遍验收。
+#
+# 为什么是 Windows：这个工程有两个 Windows 才能编译的部件 —— Clarry.Server 是 net10.0，
+# Clarry.Desktop 是 net10.0-windows + WinForms + WebView2。Linux runner 连编译都过不去。
+#
+# 为什么跳过 test-desktop：那套要开一个真窗口，验的是「窗口自己托管世界、关窗即停」。
+# GitHub 的 runner 没有可用的桌面会话，WebView2 起不来，在那里跑出来的结论是假的 ——
+# 它会因为「窗口不在屏幕上」而失败，与工程好坏无关。这套留在本机跑。
+#
+# 这个仓库的验收不是单元测试：它们打真实 HTTP，所以要先把服务起起来，再跑。
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-accept:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 编译
+        run: dotnet build core/Clarry.slnx -v q --nologo
+
+      - name: 工程地图自检
+        shell: pwsh
+        run: ./scripts/plan-check.ps1
+
+      # 服务端的 CLARRY_ROOT 默认钉在 D:\Clarry，runner 上没有那个路径，
+      # 所以这里显式指到 checkout 目录，data/ 也落在同一棵树里（被 gitignore 覆盖）。
+      - name: 起服务
+        shell: pwsh
+        run: |
+          $env:CLARRY_ROOT = $PWD.Path
+          $env:CLARRY_DATA = Join-Path $PWD 'data'
+          New-Item -ItemType Directory -Force -Path $env:CLARRY_DATA | Out-Null
+
+          $exe = Join-Path $PWD 'core/src/Clarry.Server/bin/Debug/net10.0/Clarry.Server.exe'
+          if (-not (Test-Path -LiteralPath $exe)) { throw "没有这个产物：$exe" }
+
+          Start-Process -FilePath $exe -ArgumentList '--urls', 'http://127.0.0.1:3090' -WindowStyle Hidden `
+            -RedirectStandardOutput (Join-Path $env:CLARRY_DATA 'server.log') `
+            -RedirectStandardError (Join-Path $env:CLARRY_DATA 'server.err.log')
+
+          for ($i = 0; $i -lt 40; $i++) {
+            Start-Sleep -Seconds 1
+            try {
+              $null = Invoke-WebRequest 'http://127.0.0.1:3090/api/health' -TimeoutSec 2 -UseBasicParsing
+              Write-Host '服务起来了'
+              exit 0
+            } catch { }
+          }
+
+          Write-Host '=== server.err.log'
+          Get-Content (Join-Path $env:CLARRY_DATA 'server.err.log') -ErrorAction SilentlyContinue
+          Write-Host '=== server.log'
+          Get-Content (Join-Path $env:CLARRY_DATA 'server.log') -Tail 40 -ErrorAction SilentlyContinue
+          throw '40 秒内没有在 3090 上应答'
+
+      - name: 验收（24 套，窗口那套跳过）
+        shell: pwsh
+        run: ./scripts/test-all.ps1 -Skip test-desktop
+
+      - name: 失败时把服务日志带出来
+        if: failure()
+        shell: pwsh
+        run: |
+          foreach ($f in 'data/server.err.log', 'data/server.log') {
+            if (Test-Path -LiteralPath $f) {
+              Write-Host "=== $f"
+              Get-Content -LiteralPath $f -Tail 80
+            }
+          }

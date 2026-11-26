@@ -7,12 +7,14 @@
 # 用法：
 #   & scripts\test-all.ps1                 跑全部
 #   & scripts\test-all.ps1 -Only test-wish 只跑一套（可以给多套）
+#   & scripts\test-all.ps1 -Skip test-desktop  跳过某几套（CI 里没有桌面会话，窗口那套要跳过）
 #   & scripts\test-all.ps1 -WithDiagnostics  连 test-loop 那个调试脚本一起跑
 #
 # 服务要先起来：& rebuild.ps1 -Start
 
 param(
     [string[]]$Only = @(),
+    [string[]]$Skip = @(),
     [switch]$WithDiagnostics,
     [string]$Base = 'http://127.0.0.1:3090'
 )
@@ -58,6 +60,12 @@ $suites = @(
 
 # test-loop 只打印状态、不下判断，所以它是诊断用的，不算验收的一格。
 if ($WithDiagnostics) { $suites += 'test-loop' }
+
+# 跳过是给 CI 用的：GitHub 的 runner 没有桌面会话，test-desktop 要开一个真窗口
+# （WinForms + WebView2），在那里验不出「关窗即停」这件事，只会给一个假的结论。
+if ($Skip.Count -gt 0) {
+    $suites = @($suites | Where-Object { $Skip -notcontains $_ })
+}
 
 if ($Only.Count -gt 0) {
     $suites = @($suites | Where-Object { $Only -contains $_ })
